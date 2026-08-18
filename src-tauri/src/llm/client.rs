@@ -365,14 +365,20 @@ pub fn extract_education_from_text(text: &str) -> Vec<Education> {
     ];
 
     for line in &lines {
-        let upper = line.to_uppercase();
-        if upper == "EDUCATION" || upper == "ACADEMIC BACKGROUND" || upper == "ACADEMICS" || upper == "QUALIFICATIONS" {
+        let clean_upper = line.trim_matches(|c: char| c == ':' || c.is_whitespace()).to_uppercase();
+        if clean_upper == "EDUCATION"
+            || clean_upper.starts_with("EDUCATION")
+            || clean_upper == "ACADEMIC BACKGROUND"
+            || clean_upper.starts_with("ACADEMIC")
+            || clean_upper == "ACADEMICS"
+            || clean_upper == "QUALIFICATIONS"
+        {
             in_edu_section = true;
             continue;
         }
 
         if in_edu_section {
-            if section_headers.iter().any(|&hdr| upper == hdr || upper.starts_with(hdr)) {
+            if section_headers.iter().any(|&hdr| clean_upper == hdr || clean_upper.starts_with(hdr)) {
                 break;
             }
             edu_lines.push(*line);
@@ -394,6 +400,11 @@ pub fn extract_education_from_text(text: &str) -> Vec<Education> {
         (r"(?i)\b(Diploma(?:\s+in\s+[A-Za-z\s&]+)?)\b", "Diploma"),
     ];
 
+    let compiled_patterns: Vec<(Regex, &'static str)> = degree_patterns
+        .iter()
+        .filter_map(|(pat, cat)| Regex::new(pat).ok().map(|re| (re, *cat)))
+        .collect();
+
     let year_re = Regex::new(r"\b(19\d{2}|20\d{2})\b").ok();
     let inst_keywords = ["University", "Institute", "College", "School", "Academy", "Polytechnic", "Campus"];
 
@@ -403,13 +414,11 @@ pub fn extract_education_from_text(text: &str) -> Vec<Education> {
         let mut found_degree: Option<String> = None;
         let mut degree_category = "";
 
-        for (pattern, cat) in degree_patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(mat) = re.find(line) {
-                    found_degree = Some(mat.as_str().trim().to_string());
-                    degree_category = cat;
-                    break;
-                }
+        for (re, cat) in &compiled_patterns {
+            if let Some(mat) = re.find(line) {
+                found_degree = Some(mat.as_str().trim().to_string());
+                degree_category = *cat;
+                break;
             }
         }
 
@@ -446,9 +455,9 @@ pub fn extract_education_from_text(text: &str) -> Vec<Education> {
                 institution = clean_rem.clone();
             } else if i + 1 < search_lines.len() {
                 let next_line = search_lines[i + 1];
-                let next_upper = next_line.to_uppercase();
-                let is_next_header = section_headers.iter().any(|&hdr| next_upper == hdr);
-                let is_next_degree = degree_patterns.iter().any(|(pat, _)| Regex::new(pat).map_or(false, |r| r.is_match(next_line)));
+                let next_clean_upper = next_line.trim_matches(|c: char| c == ':' || c.is_whitespace()).to_uppercase();
+                let is_next_header = section_headers.iter().any(|&hdr| next_clean_upper == hdr);
+                let is_next_degree = compiled_patterns.iter().any(|(re, _)| re.is_match(next_line));
 
                 if !is_next_header && !is_next_degree {
                     let mut inst_str = next_line.trim().to_string();

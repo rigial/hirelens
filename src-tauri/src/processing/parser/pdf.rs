@@ -40,6 +40,19 @@ pub fn normalize_extracted_text(raw: &str) -> String {
         "VOLUNTEERING",
     ];
 
+    const ROLE_PREFIXES: &[&str] = &[
+        "Software", "Senior", "Lead", "Product", "Frontend", "Backend",
+        "Full-Stack", "Full", "Staff", "Principal", "Junior", "Head"
+    ];
+
+    const ROLE_SUFFIXES: &[&str] = &[
+        "Engineer", "Developer", "Architect", "Designer", "Manager", "Development", "Director"
+    ];
+
+    const DEGREE_OPENERS: &[&str] = &[
+        "Bachelor", "Master", "B.E.", "B.Tech", "B.S.", "M.S.", "M.Tech", "Ph.D", "PhD", "MBA", "MCA"
+    ];
+
     let mut lines: Vec<String> = Vec::new();
     let mut current_line: Vec<&str> = Vec::new();
 
@@ -53,16 +66,21 @@ pub fn normalize_extracted_text(raw: &str) -> String {
         let candidate2 = format!("{} {}", token, next_token).to_uppercase();
         let candidate1 = token.to_uppercase();
 
+        let upper1 = is_all_uppercase_token(token);
+        let upper2 = upper1 && is_all_uppercase_token(next_token);
+        let upper3 = upper2 && is_all_uppercase_token(next2_token);
+
         let mut matched_header: Option<String> = None;
         let mut header_tokens_count = 0;
 
-        if MULTI_WORD_SECTIONS.contains(&candidate3.as_str()) {
+        if upper3 && MULTI_WORD_SECTIONS.contains(&candidate3.as_str()) {
             matched_header = Some(candidate3);
             header_tokens_count = 3;
-        } else if MULTI_WORD_SECTIONS.contains(&candidate2.as_str()) {
+        } else if upper2 && MULTI_WORD_SECTIONS.contains(&candidate2.as_str()) {
             matched_header = Some(candidate2);
             header_tokens_count = 2;
-        } else if SINGLE_WORD_SECTIONS.contains(&candidate1.as_str())
+        } else if upper1
+            && SINGLE_WORD_SECTIONS.contains(&candidate1.as_str())
             && next_token != "&"
             && next_token != "and"
             && !next_token.ends_with(':')
@@ -94,26 +112,10 @@ pub fn normalize_extracted_text(raw: &str) -> String {
             continue;
         }
 
-        let is_role_start = (token == "Software"
-            || token == "Senior"
-            || token == "Lead"
-            || token == "Product"
-            || token == "Frontend"
-            || token == "Backend"
-            || token == "Full-Stack"
-            || token == "Staff"
-            || token == "Principal")
-            && (next_token == "Engineer"
-                || next_token == "Developer"
-                || next_token == "Architect"
-                || next_token == "Designer"
-                || next_token == "Manager"
-                || next_token == "Development");
-
-        let is_edu_start = (token == "Bachelor" && next_token == "of")
-            || (token == "Master" && next_token == "of")
-            || token == "B.E."
-            || token == "B.Tech";
+        let is_role_start = ROLE_PREFIXES.contains(&token) && ROLE_SUFFIXES.contains(&next_token);
+        let is_edu_start = DEGREE_OPENERS.contains(&token)
+            || (token == "Bachelor" && next_token == "of")
+            || (token == "Master" && next_token == "of");
 
         if (is_role_start || is_edu_start) && !current_line.is_empty() && current_line.contains(&"●") {
             lines.push(current_line.join(" "));
@@ -166,6 +168,11 @@ pub fn normalize_extracted_text(raw: &str) -> String {
     cleaned.join("\n")
 }
 
+fn is_all_uppercase_token(t: &str) -> bool {
+    let chars: Vec<char> = t.chars().filter(|c| c.is_alphabetic()).collect();
+    !chars.is_empty() && chars.iter().all(|c| c.is_uppercase())
+}
+
 fn is_bullet_symbol(token: &str) -> bool {
     token == "•"
         || token == "●"
@@ -178,7 +185,8 @@ fn is_bullet_symbol(token: &str) -> bool {
         || token == "\u{2043}"
         || token == "\u{2219}"
         || (token.len() >= 2
-            && token.chars().next().map_or(false, |c| c.is_ascii_digit())
+            && token.len() <= 3
+            && token.chars().take(token.len().saturating_sub(1)).all(|c| c.is_ascii_digit())
             && (token.ends_with('.') || token.ends_with(')')))
 }
 

@@ -81,10 +81,14 @@ pub async fn download_model(
                     "UPDATE models SET status = 'available' WHERE id = ?1",
                     rusqlite::params![model_clone.id],
                 ).ok();
-                app_clone.emit("model-download-error", serde_json::json!({
-                    "model_id": model_clone.id,
-                    "error": err
-                })).ok();
+
+                let is_cancellation = err.to_lowercase().contains("cancel");
+                if !is_cancellation {
+                    app_clone.emit("model-download-error", serde_json::json!({
+                        "model_id": model_clone.id,
+                        "error": err
+                    })).ok();
+                }
             }
         }
     });

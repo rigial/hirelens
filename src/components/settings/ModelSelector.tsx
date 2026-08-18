@@ -32,7 +32,7 @@ export function ModelSelector() {
   };
 
   const isAnyModelDownloading = models.some(
-    (m) => m.status === 'downloading' || downloadProgress?.modelId === m.id
+    (m) => m.status === 'downloading' || (!!downloadProgress?.modelId && downloadProgress.modelId === m.id)
   );
 
   return (
@@ -45,11 +45,11 @@ export function ModelSelector() {
           const isActive = model?.isActive;
           const isDownloaded = model?.status === 'downloaded';
           const isCurrentDownloading =
-            model?.status === 'downloading' || downloadProgress?.modelId === model?.id;
+            !!model && (model.status === 'downloading' || downloadProgress?.modelId === model.id);
           const currentProgress =
-            downloadProgress?.modelId === model?.id ? downloadProgress : null;
+            model && downloadProgress?.modelId === model.id ? downloadProgress : null;
           const modelError =
-            downloadError?.modelId === model?.id ? downloadError?.message : null;
+            model && downloadError?.modelId === model.id ? downloadError.message : null;
 
           const percent =
             currentProgress && currentProgress.total > 0

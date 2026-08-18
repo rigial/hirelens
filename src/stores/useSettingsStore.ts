@@ -2,12 +2,24 @@ import { create } from 'zustand';
 import { Model, SystemInfo } from '../types/settings';
 import { api } from '../lib/tauri';
 
+export interface ModelDownloadProgress {
+  modelId: string;
+  downloaded: number;
+  total: number;
+  speedBps: number;
+}
+
+export interface ModelDownloadError {
+  modelId: string;
+  message: string;
+}
+
 interface SettingsStore {
   settings: Record<string, string>;
   models: Model[];
   systemInfo: SystemInfo | null;
-  downloadProgress: { modelId: string; downloaded: number; total: number; speedBps: number } | null;
-  downloadError: { modelId: string; message: string } | null;
+  downloadProgress: ModelDownloadProgress | null;
+  downloadError: ModelDownloadError | null;
   isLoading: boolean;
   error: string | null;
   fetchSettings: () => Promise<void>;
@@ -17,8 +29,8 @@ interface SettingsStore {
   downloadModel: (modelId: string) => Promise<void>;
   cancelModelDownload: (modelId: string) => Promise<void>;
   setActiveModel: (modelId: string) => Promise<void>;
-  setDownloadProgress: (progress: { modelId: string; downloaded: number; total: number; speedBps: number } | null) => void;
-  setDownloadError: (err: { modelId: string; message: string } | null) => void;
+  setDownloadProgress: (progress: ModelDownloadProgress | null) => void;
+  setDownloadError: (err: ModelDownloadError | null) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({

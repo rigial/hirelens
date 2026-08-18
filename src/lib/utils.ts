@@ -74,8 +74,8 @@ export function formatResumeText(raw: string): string {
 
   const isBulletSymbol = (t: string) =>
     /^[•●▪▫\*\u2022\u2023\u25E6\u2043\u2219]$/.test(t) ||
-    /^\d+[\.\)]$/.test(t) ||
-    /^\(\d+\)$/.test(t);
+    /^\d{1,2}[\.\)]$/.test(t) ||
+    /^\(\d{1,2}\)$/.test(t);
 
   const KNOWN_SECTIONS_SET = new Set([
     'PROFESSIONAL SUMMARY',
@@ -130,13 +130,19 @@ export function formatResumeText(raw: string): string {
     let matchedHeader: string | null = null;
     let headerTokensCount = 0;
 
-    if (KNOWN_SECTIONS_SET.has(candidate3)) {
+    const isUpper = (t: string) => t === t.toUpperCase() && /[A-Z]/.test(t);
+    const upperRun1 = isUpper(token);
+    const upperRun2 = upperRun1 && isUpper(nextToken);
+    const upperRun3 = upperRun2 && isUpper(next2Token);
+
+    if (upperRun3 && KNOWN_SECTIONS_SET.has(candidate3)) {
       matchedHeader = candidate3;
       headerTokensCount = 3;
-    } else if (KNOWN_SECTIONS_SET.has(candidate2)) {
+    } else if (upperRun2 && KNOWN_SECTIONS_SET.has(candidate2)) {
       matchedHeader = candidate2;
       headerTokensCount = 2;
     } else if (
+      upperRun1 &&
       KNOWN_SECTIONS_SET.has(candidate1) &&
       nextToken !== '&' &&
       nextToken !== 'and' &&

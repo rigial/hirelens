@@ -38,7 +38,18 @@ export const api = {
   },
   system: {
     getInfo: () => invoke<SystemInfo>('get_system_info'),
-    openPath: (path: string) => invoke<void>('open_file_path', { path }),
+    openPath: async (path: string): Promise<void> => {
+      try {
+        await invoke<void>('open_file_path', { path });
+      } catch (backendErr: any) {
+        try {
+          const { openPath: pluginOpen } = await import('@tauri-apps/plugin-opener');
+          await pluginOpen(path);
+        } catch {
+          throw backendErr;
+        }
+      }
+    },
   },
   settings: {
     getAll: () => invoke<Record<string, string>>('get_settings'),

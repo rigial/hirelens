@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, FileText, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { api } from '../../lib/tauri';
@@ -32,11 +32,33 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateResumeInfo[]>([]);
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const triggerSuccess = (count: number) => {
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+    }
+    setUploadSuccessCount(count);
+    successTimeoutRef.current = setTimeout(() => {
+      setUploadSuccessCount(null);
+      successTimeoutRef.current = null;
+    }, 4000);
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    if (!isUploading) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -49,6 +71,8 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (isUploading) return;
+
     setErrorMessage(null);
     setUploadSuccessCount(null);
 
@@ -57,7 +81,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
+    if (!e.target.files || isUploading) return;
     const files = Array.from(e.target.files);
     await processFiles(files);
     if (fileInputRef.current) {
@@ -71,8 +95,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
     setErrorMessage(null);
     try {
       await api.resumes.upload(jobId, paths);
-      setUploadSuccessCount(paths.length);
-      setTimeout(() => setUploadSuccessCount(null), 4000);
+      triggerSuccess(paths.length);
       if (onUploaded) onUploaded();
     } catch (err: any) {
       setErrorMessage(err?.toString() || 'Failed to upload resumes');
@@ -101,8 +124,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
 
       // No duplicates detected, proceed directly with upload
       await api.resumes.upload(jobId, filePaths);
-      setUploadSuccessCount(filePaths.length);
-      setTimeout(() => setUploadSuccessCount(null), 4000);
+      triggerSuccess(filePaths.length);
       if (onUploaded) onUploaded();
     } catch (err: any) {
       setErrorMessage(err?.toString() || 'Failed to process resumes');
@@ -138,8 +160,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       if (filePaths.length > 0) {
         await initiateUploadWithDuplicateCheck(filePaths);
       } else {
-        // Fallback to native open dialog
-        await handleBrowseClick();
+        setErrorMessage('Could not determine local file path. Please use Browse Files to select resumes.');
       }
     } catch (err: any) {
       setErrorMessage(err?.toString() || 'Failed to upload resumes');
@@ -170,12 +191,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
         }
       }
     } catch (err: any) {
-      // If native dialog errors, fallback to HTML file input
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      } else {
-        setErrorMessage(err?.toString() || 'Failed to open file picker');
-      }
+      setErrorMessage(err?.toString() || 'Failed to open native file picker');
     }
   };
 

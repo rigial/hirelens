@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { openPath } from '@tauri-apps/plugin-opener';
 import {
   ArrowLeft,
   Mail,
@@ -53,6 +52,10 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
   const [isCopiedPath, setIsCopiedPath] = useState(false);
   const [isCopiedText, setIsCopiedText] = useState(false);
 
+  const formattedResumeText = useMemo(() => {
+    return candidate.rawText ? formatResumeText(candidate.rawText) : '';
+  }, [candidate.rawText]);
+
   const analysis = candidate.analysis;
   const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
   const isScannedDoc = Boolean(
@@ -78,14 +81,10 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
     setOpenFileError(null);
     try {
       await api.system.openPath(candidate.filePath);
-    } catch {
-      try {
-        await openPath(candidate.filePath);
-      } catch (err: any) {
-        const msg = typeof err === 'string' ? err : err?.message || 'Failed to open original file';
-        setOpenFileError(msg);
-        setTimeout(() => setOpenFileError(null), 6000);
-      }
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to open original file';
+      setOpenFileError(msg);
+      setTimeout(() => setOpenFileError(null), 6000);
     } finally {
       setIsOpeningFile(false);
     }
@@ -98,21 +97,21 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
       setIsCopiedPath(true);
       setTimeout(() => setIsCopiedPath(false), 2000);
     } catch {
-      // Ignore
+      setOpenFileError('Failed to copy file path to clipboard');
+      setTimeout(() => setOpenFileError(null), 5000);
     }
   };
 
   const handleCopyResumeText = async () => {
-    const textToCopy = resumeViewMode === 'formatted'
-      ? formatResumeText(candidate.rawText || '')
-      : candidate.rawText || '';
+    const textToCopy = resumeViewMode === 'formatted' ? formattedResumeText : candidate.rawText || '';
     if (!textToCopy) return;
     try {
       await navigator.clipboard.writeText(textToCopy);
       setIsCopiedText(true);
       setTimeout(() => setIsCopiedText(false), 2000);
     } catch {
-      // Ignore
+      setOpenFileError('Failed to copy resume text to clipboard');
+      setTimeout(() => setOpenFileError(null), 5000);
     }
   };
 
@@ -513,8 +512,8 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
             <CardContent className="p-6">
               {resumeViewMode === 'formatted' ? (
                 <div className="text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap break-words bg-slate-50/70 p-6 rounded-xl border border-slate-200/80 max-h-[650px] overflow-y-auto select-text space-y-3">
-                  {candidate.rawText ? (
-                    formatResumeText(candidate.rawText)
+                  {formattedResumeText ? (
+                    formattedResumeText
                   ) : (
                     <p className="text-xs text-slate-400 italic">No text extracted for this resume.</p>
                   )}

@@ -14,10 +14,28 @@ import { useSettingsStore } from './stores/useSettingsStore';
 import { api } from './lib/tauri';
 import { CandidateAnalysisCompleteEvent } from './types/processing';
 
+interface ModelDownloadProgressPayload {
+  model_id: string;
+  downloaded_bytes: number;
+  total_bytes: number;
+  speed_bps: number;
+}
+
+interface ModelDownloadCompletePayload {
+  model_id: string;
+}
+
+interface ModelDownloadErrorPayload {
+  model_id: string;
+  error: string;
+}
+
 export function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
-  const { handleAnalysisComplete } = useCandidateStore();
-  const { setDownloadProgress, setDownloadError, fetchModels } = useSettingsStore();
+  const handleAnalysisComplete = useCandidateStore((s) => s.handleAnalysisComplete);
+  const setDownloadProgress = useSettingsStore((s) => s.setDownloadProgress);
+  const setDownloadError = useSettingsStore((s) => s.setDownloadError);
+  const fetchModels = useSettingsStore((s) => s.fetchModels);
 
   useEffect(() => {
     // Check onboarding status from settings
@@ -39,7 +57,7 @@ export function App() {
       unlistenAnalysis = unlisten;
     });
 
-    listen<any>('model-download-progress', (event) => {
+    listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
       const { model_id, downloaded_bytes, total_bytes, speed_bps } = event.payload;
       setDownloadProgress({
         modelId: model_id,
@@ -51,7 +69,7 @@ export function App() {
       unlistenProgress = unlisten;
     });
 
-    listen<any>('model-download-complete', () => {
+    listen<ModelDownloadCompletePayload>('model-download-complete', () => {
       setDownloadProgress(null);
       setDownloadError(null);
       fetchModels();
@@ -59,7 +77,7 @@ export function App() {
       unlistenComplete = unlisten;
     });
 
-    listen<any>('model-download-error', (event) => {
+    listen<ModelDownloadErrorPayload>('model-download-error', (event) => {
       const { model_id, error } = event.payload;
       setDownloadProgress(null);
       setDownloadError({ modelId: model_id, message: error || 'Model download failed' });

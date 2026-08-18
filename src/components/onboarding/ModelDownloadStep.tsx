@@ -45,8 +45,9 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
 
   const isDownloading =
     isStartingDownload ||
-    selectedModel?.status === 'downloading' ||
-    downloadProgress?.modelId === selectedModel?.id;
+    (!!selectedModel &&
+      (selectedModel.status === 'downloading' ||
+        (!!downloadProgress?.modelId && downloadProgress.modelId === selectedModel.id)));
 
   const isDownloaded = selectedModel?.status === 'downloaded';
 
@@ -87,13 +88,13 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
   };
 
   const currentDownloadForSelected =
-    downloadProgress?.modelId === selectedModel?.id ? downloadProgress : null;
+    selectedModel && downloadProgress?.modelId === selectedModel.id ? downloadProgress : null;
 
   const percent = currentDownloadForSelected && currentDownloadForSelected.total > 0
     ? Math.min(100, Math.round((currentDownloadForSelected.downloaded / currentDownloadForSelected.total) * 100))
     : null;
 
-  const hasError = downloadError?.modelId === selectedModel?.id ? downloadError.message : null;
+  const hasError = selectedModel && downloadError?.modelId === selectedModel.id ? downloadError.message : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-center py-4">
@@ -110,7 +111,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
       </div>
 
       {/* Model Selection Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-left">
+      <div role="radiogroup" aria-label="Select local AI model tier" className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-left">
         {(['fast', 'balanced', 'quality'] as ModelTier[]).map((tier) => {
           const config = MODEL_TIER_CONFIG[tier];
           const model = models.find((m) => m.tier === tier);
@@ -118,14 +119,23 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
           const isSelected = selectedTier === tier;
           const isTierDownloaded = model?.status === 'downloaded';
           const isTierDownloading =
-            model?.status === 'downloading' || downloadProgress?.modelId === model?.id;
+            !!model && (model.status === 'downloading' || downloadProgress?.modelId === model.id);
 
           return (
             <Card
               key={tier}
+              role="radio"
+              aria-checked={isSelected}
+              tabIndex={isDownloading ? -1 : 0}
               onClick={() => !isDownloading && setSelectedTier(tier)}
+              onKeyDown={(e) => {
+                if (!isDownloading && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  setSelectedTier(tier);
+                }
+              }}
               className={cn(
-                'cursor-pointer transition-all relative border-2',
+                'cursor-pointer transition-all relative border-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                 isSelected
                   ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
                   : 'border-slate-200/80 hover:border-slate-300',

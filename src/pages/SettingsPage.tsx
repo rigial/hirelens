@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { HardDrive, ShieldCheck, Info, FolderOpen, Copy, Check, AlertCircle, RotateCcw } from 'lucide-react';
-import { openPath } from '@tauri-apps/plugin-opener';
 import { ModelSelector } from '../components/settings/ModelSelector';
 import { ConcurrencySettings } from '../components/settings/ConcurrencySettings';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -50,16 +49,24 @@ export function SettingsPage() {
     setActionError(null);
     try {
       await api.system.openPath(appDataDir);
-    } catch {
-      try {
-        await openPath(appDataDir);
-      } catch (err: any) {
-        const msg = typeof err === 'string' ? err : err?.message || 'Failed to open directory in file explorer';
-        setActionError(msg);
-        setTimeout(() => setActionError(null), 5000);
-      }
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to open directory in file explorer';
+      setActionError(msg);
+      setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsOpening(false);
+    }
+  };
+
+  const handleOpenUrl = async (url: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setActionError(null);
+    try {
+      await api.system.openPath(url);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to open link';
+      setActionError(msg);
+      setTimeout(() => setActionError(null), 5000);
     }
   };
 
@@ -200,26 +207,20 @@ export function SettingsPage() {
               href="https://rigial.com/"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => {
-                e.preventDefault();
-                api.system.openPath('https://rigial.com/');
-              }}
+              onClick={(e) => handleOpenUrl('https://rigial.com/', e)}
               className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
             >
               Rigial.com
             </a>{' '}
-            |{' '}
+            — M R Kishore Kumar —{' '}
             <a
               href="https://www.linkedin.com/in/mrkishorekumar/"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => {
-                e.preventDefault();
-                api.system.openPath('https://www.linkedin.com/in/mrkishorekumar/');
-              }}
+              onClick={(e) => handleOpenUrl('https://www.linkedin.com/in/mrkishorekumar/', e)}
               className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
             >
-              M R Kishore Kumar
+              LinkedIn
             </a>
           </p>
         </CardContent>

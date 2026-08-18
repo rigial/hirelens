@@ -17,6 +17,7 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
   const navigate = useNavigate();
   const { retryResume } = useCandidateStore();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   const analysis = candidate.analysis;
   const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
@@ -41,8 +42,13 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
     e.stopPropagation();
     if (isRetrying || !candidate.resumeId) return;
     setIsRetrying(true);
+    setRetryError(null);
     try {
       await retryResume(jobId, candidate.resumeId);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Retry failed';
+      setRetryError(msg);
+      setTimeout(() => setRetryError(null), 6000);
     } finally {
       setIsRetrying(false);
     }
@@ -135,6 +141,7 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
                 <RotateCcw className={`h-2.5 w-2.5 ${isRetrying ? 'animate-spin' : ''}`} />
                 Retry
               </button>
+              {retryError && <span className="text-[11px] text-rose-600 font-semibold">{retryError}</span>}
             </div>
           ) : isFailed ? (
             <div className="flex items-center gap-2 flex-wrap text-xs text-rose-600 font-medium">
@@ -149,6 +156,7 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
                 <RotateCcw className={`h-2.5 w-2.5 ${isRetrying ? 'animate-spin' : ''}`} />
                 Retry
               </button>
+              {retryError && <span className="text-[11px] text-rose-600 font-semibold">{retryError}</span>}
             </div>
           ) : null}
         </div>

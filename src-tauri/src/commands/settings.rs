@@ -1,8 +1,15 @@
 use std::collections::HashMap;
+use std::path::Path;
 use tauri::State;
 use rusqlite::params;
 use crate::state::app_state::AppState;
 
+/// Formats the application data directory path into a canonical string representation.
+pub fn format_app_data_dir(path: &Path) -> String {
+    path.to_string_lossy().to_string()
+}
+
+/// Retrieves all persisted key-value application settings from the database.
 #[tauri::command]
 pub async fn get_settings(
     state: State<'_, AppState>,
@@ -22,6 +29,7 @@ pub async fn get_settings(
     Ok(map)
 }
 
+/// Upserts an individual application setting key-value pair into the database.
 #[tauri::command]
 pub async fn set_setting(
     state: State<'_, AppState>,
@@ -37,21 +45,26 @@ pub async fn set_setting(
     Ok(())
 }
 
+/// Returns the filesystem path to the application's local data storage directory.
 #[tauri::command]
 pub async fn get_app_data_dir(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    Ok(state.app_data_dir.to_string_lossy().to_string())
+    Ok(format_app_data_dir(&state.app_data_dir))
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::path::PathBuf;
 
     #[test]
-    fn test_app_data_dir_path_format() {
+    fn test_format_app_data_dir() {
         let test_dir = PathBuf::from("/Users/test/.hirelens");
-        assert_eq!(test_dir.to_string_lossy(), "/Users/test/.hirelens");
+        assert_eq!(format_app_data_dir(&test_dir), "/Users/test/.hirelens");
+
+        let nested_dir = PathBuf::from("/var/data/hirelens/storage");
+        assert_eq!(format_app_data_dir(&nested_dir), "/var/data/hirelens/storage");
     }
 }
 

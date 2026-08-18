@@ -19,7 +19,8 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   // 4. Italic: *text* or _text_
   // 5. Strikethrough: ~~text~~
   // 6. Inline code: `code`
-  const tokenRegex = /(\[([^\]]+)\]\(([^)]+)\)|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\*([^*]+)\*|_([^_]+)_)/g;
+  const tokenRegex =
+    /(\[([^\]]+)\]\(([^)]+)\)|\*\*\*([^*]+)\*\*\*|___([^_]+)___|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\*([^*]+)\*|_([^_]+)_)/g;
 
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -48,42 +49,42 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
           {linkText}
         </a>
       );
-    } else if (match[4]) {
-      // Bold + Italic ***text***
+    } else if (match[4] || match[5]) {
+      // Bold + Italic ***text*** or ___text___
       nodes.push(
         <strong key={match.index} className="font-bold italic text-slate-900">
-          {match[4]}
+          {match[4] || match[5]}
         </strong>
       );
-    } else if (match[5] || match[6]) {
+    } else if (match[6] || match[7]) {
       // Bold **text** or __text__
       nodes.push(
         <strong key={match.index} className="font-semibold text-slate-900">
-          {match[5] || match[6]}
+          {match[6] || match[7]}
         </strong>
       );
-    } else if (match[7]) {
+    } else if (match[8]) {
       // Strikethrough ~~text~~
       nodes.push(
         <del key={match.index} className="line-through text-slate-400">
-          {match[7]}
+          {match[8]}
         </del>
       );
-    } else if (match[8]) {
+    } else if (match[9]) {
       // Inline code `code`
       nodes.push(
         <code
           key={match.index}
           className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-[0.9em] border border-slate-200/80"
         >
-          {match[8]}
+          {match[9]}
         </code>
       );
-    } else if (match[9] || match[10]) {
+    } else if (match[10] || match[11]) {
       // Italic *text* or _text_
       nodes.push(
         <em key={match.index} className="italic text-slate-800">
-          {match[9] || match[10]}
+          {match[10] || match[11]}
         </em>
       );
     }
@@ -303,7 +304,7 @@ export function MarkdownView({
     while (
       i < lines.length &&
       lines[i].trim() &&
-      !lines[i].trim().startsWith('#') &&
+      !/^(#{1,6})\s+/.test(lines[i].trim()) &&
       !lines[i].trim().startsWith('```') &&
       !lines[i].trim().startsWith('>') &&
       !/^[-*+]\s+/.test(lines[i].trim()) &&
@@ -325,6 +326,13 @@ export function MarkdownView({
           ))}
         </p>
       );
+    } else if (i < lines.length) {
+      elements.push(
+        <p key={elementKey++} className="my-2 text-xs text-slate-700 leading-relaxed break-words">
+          {renderInlineMarkdown(lines[i])}
+        </p>
+      );
+      i++;
     }
   }
 

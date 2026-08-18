@@ -62,6 +62,8 @@ export interface CandidateWithAnalysis extends Candidate {
 
 export interface CandidateDetail extends Candidate {
   resumeId: string;
+  resumeStatus?: ResumeStatus;
+  resumeError?: string | null;
   fileName: string;
   filePath: string;
   rawText: string | null;

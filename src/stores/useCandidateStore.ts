@@ -12,6 +12,7 @@ interface CandidateStore {
   fetchCandidates: (jobId: string) => Promise<void>;
   fetchCandidateDetail: (candidateId: string, jobId: string) => Promise<void>;
   updateShortlistStatus: (jobId: string, candidateId: string, status: string, notes?: string) => Promise<void>;
+  retryResume: (jobId: string, resumeId: string) => Promise<void>;
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => void;
   fetchProcessingStatus: (jobId: string) => Promise<void>;
 }
@@ -63,6 +64,16 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
       }));
     } catch (err: any) {
       set({ error: err?.toString() || 'Failed to update shortlist status' });
+    }
+  },
+
+  retryResume: async (jobId: string, resumeId: string) => {
+    try {
+      await api.candidates.retry(resumeId);
+      await get().fetchCandidates(jobId);
+      await get().fetchProcessingStatus(jobId);
+    } catch (err: any) {
+      set({ error: err?.toString() || 'Failed to retry processing resume' });
     }
   },
 

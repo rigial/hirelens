@@ -91,6 +91,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::settings::get_settings,
             commands::settings::set_setting,
+            commands::settings::get_app_data_dir,
             commands::models::get_models,
             commands::models::download_model,
             commands::models::cancel_model_download,

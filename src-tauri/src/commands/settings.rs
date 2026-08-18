@@ -36,3 +36,23 @@ pub async fn set_setting(
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_app_data_dir(
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    Ok(state.app_data_dir.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_app_data_dir_path_format() {
+        let test_dir = PathBuf::from("/Users/test/.hirelens");
+        assert_eq!(test_dir.to_string_lossy(), "/Users/test/.hirelens");
+    }
+}
+
+

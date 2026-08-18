@@ -42,5 +42,6 @@ export const api = {
   settings: {
     getAll: () => invoke<Record<string, string>>('get_settings'),
     set: (key: string, value: string) => invoke<void>('set_setting', { key, value }),
+    getAppDataDir: () => invoke<string>('get_app_data_dir'),
   },
 };

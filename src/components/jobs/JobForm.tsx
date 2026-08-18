@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Briefcase } from 'lucide-react';
+import { ArrowLeft, Save, Briefcase, PenLine, Eye } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Card, CardContent } from '../ui/Card';
+import { MarkdownView } from '../ui/MarkdownView';
 import { SkillsInput } from './SkillsInput';
 import { useJobStore } from '../../stores/useJobStore';
 import { SkillPayload } from '../../types/job';
@@ -16,6 +17,7 @@ export function JobForm() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [descriptionTab, setDescriptionTab] = useState<'write' | 'preview'>('write');
   const [location, setLocation] = useState('');
   const [employmentType, setEmploymentType] = useState<string>('full-time');
   const [experienceRequiredYears, setExperienceRequiredYears] = useState<string>('2');
@@ -152,15 +154,65 @@ export function JobForm() {
 
             <SkillsInput skills={skills} onChange={setSkills} />
 
-            <Textarea
-              label="Job Description"
-              rows={6}
-              placeholder="Paste the full job description and role requirements..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              error={errors.description}
-              required
-            />
+            {/* Job Description with Markdown Preview Toggle */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Job Description (Markdown Supported) <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionTab('write')}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                      descriptionTab === 'write'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <PenLine className="h-3 w-3" />
+                    <span>Write</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionTab('preview')}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                      descriptionTab === 'preview'
+                        ? 'bg-white text-indigo-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>Preview</span>
+                  </button>
+                </div>
+              </div>
+
+              {descriptionTab === 'write' ? (
+                <Textarea
+                  rows={8}
+                  placeholder="Paste the full job description, role requirements, # headings, - bullet points, **qualifications**..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  error={errors.description}
+                  required
+                />
+              ) : (
+                <div className="space-y-1.5">
+                  <MarkdownView
+                    content={description}
+                    className="min-h-[190px] max-h-[360px] bg-slate-50/50"
+                    placeholder="Nothing to preview yet. Switch to Write tab to enter the job description with markdown."
+                  />
+                  {errors.description && (
+                    <p className="text-xs text-rose-600 font-medium">{errors.description}</p>
+                  )}
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400">
+                Tip: Format headers with <code className="font-mono text-slate-500">#</code>, bullet lists with <code className="font-mono text-slate-500">-</code>, bold with <code className="font-mono text-slate-500">**bold**</code>.
+              </p>
+            </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <Button

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, RotateCcw, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, X, RotateCcw, AlertCircle, Loader2, FileWarning } from 'lucide-react';
 import { CandidateWithAnalysis } from '../../types/candidate';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { getScoreColor } from '../../lib/utils';
+import { useCandidateStore } from '../../stores/useCandidateStore';
 
 interface CandidateCardProps {
   candidate: CandidateWithAnalysis;
@@ -14,6 +15,9 @@ interface CandidateCardProps {
 
 export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCardProps) {
   const navigate = useNavigate();
+  const { retryResume } = useCandidateStore();
+  const [isRetrying, setIsRetrying] = useState(false);
+
   const analysis = candidate.analysis;
   const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
 
@@ -24,6 +28,25 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
     candidate.resumeStatus === 'analyzing';
 
   const isFailed = candidate.resumeStatus === 'failed';
+
+  const isScannedPdf = Boolean(
+    candidate.resumeError && (
+      candidate.resumeError.toLowerCase().includes('scanned') ||
+      candidate.resumeError.toLowerCase().includes('no extractable text') ||
+      candidate.resumeError.toLowerCase().includes('text layer')
+    )
+  );
+
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isRetrying || !candidate.resumeId) return;
+    setIsRetrying(true);
+    try {
+      await retryResume(jobId, candidate.resumeId);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   return (
     <div
@@ -47,6 +70,10 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
             <div className="h-12 w-12 rounded-xl bg-indigo-50 border border-indigo-200 flex flex-col items-center justify-center text-indigo-600">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
+          ) : isScannedPdf ? (
+            <div className="h-12 w-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600" title="Scanned PDF Warning">
+              <FileWarning className="h-5 w-5" />
+            </div>
           ) : (
             <div className="h-12 w-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
               <AlertCircle className="h-5 w-5" />
@@ -64,6 +91,12 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
               <span className="text-xs text-slate-400 truncate">
                 • {candidate.email}
               </span>
+            )}
+            {isScannedPdf && (
+              <Badge variant="warning" className="gap-1 px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-800 border-amber-300">
+                <FileWarning className="h-3 w-3 text-amber-600" />
+                <span>Scanned PDF (No Text Layer)</span>
+              </Badge>
             )}
           </div>
 
@@ -89,10 +122,34 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
             <p className="text-xs text-indigo-600 font-medium">
               Extracting candidate profile...
             </p>
+          ) : isScannedPdf ? (
+            <div className="flex items-center gap-2 flex-wrap text-xs text-amber-700 font-medium">
+              <span>PDF contains no extractable text layer (scanned/image). Please use OCR or a text-based document.</span>
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+                title="Retry processing"
+              >
+                <RotateCcw className={`h-2.5 w-2.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                Retry
+              </button>
+            </div>
           ) : isFailed ? (
-            <p className="text-xs text-rose-600 font-medium">
-              {candidate.resumeError || 'Processing error'}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap text-xs text-rose-600 font-medium">
+              <span>{candidate.resumeError || 'Processing error'}</span>
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+                title="Retry processing"
+              >
+                <RotateCcw className={`h-2.5 w-2.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                Retry
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

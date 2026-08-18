@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Download, HardDrive, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle2, Download, HardDrive, Sparkles, Loader2, AlertCircle, XCircle, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -18,16 +18,17 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
     models,
     systemInfo,
     downloadProgress,
+    downloadError,
     fetchModels,
     fetchSystemInfo,
     downloadModel,
+    cancelModelDownload,
     setActiveModel,
     saveSetting,
   } = useSettingsStore();
 
   const [selectedTier, setSelectedTier] = useState<ModelTier>('balanced');
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isStartingDownload, setIsStartingDownload] = useState(false);
 
   useEffect(() => {
     fetchModels();
@@ -42,23 +43,58 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
 
   const selectedModel = models.find((m) => m.tier === selectedTier) || models[0];
 
+  const isDownloading =
+    isStartingDownload ||
+    (!!selectedModel &&
+      (selectedModel.status === 'downloading' ||
+        (!!downloadProgress?.modelId && downloadProgress.modelId === selectedModel.id)));
+
+  const isDownloaded = selectedModel?.status === 'downloaded';
+
+  // Automatically activate when download completes
+  useEffect(() => {
+    if (selectedModel?.status === 'downloaded' && !selectedModel.isActive) {
+      setActiveModel(selectedModel.id);
+    }
+  }, [selectedModel?.status, selectedModel?.id, selectedModel?.isActive, setActiveModel]);
+
   const handleStartDownload = async () => {
     if (!selectedModel) return;
-    setIsDownloading(true);
+    setIsStartingDownload(true);
     try {
       await downloadModel(selectedModel.id);
-      await setActiveModel(selectedModel.id);
-      setIsDownloaded(true);
-      setIsDownloading(false);
-    } catch {
-      setIsDownloading(false);
+    } finally {
+      setIsStartingDownload(false);
     }
   };
 
+  const handleCancel = async () => {
+    if (!selectedModel) return;
+    setIsStartingDownload(false);
+    await cancelModelDownload(selectedModel.id);
+  };
+
   const handleFinish = async () => {
+    if (selectedModel) {
+      await setActiveModel(selectedModel.id);
+    }
     await saveSetting('onboarding_completed', 'true');
     onComplete();
   };
+
+  const handleSkipForNow = async () => {
+    await saveSetting('onboarding_completed', 'true');
+    onComplete();
+  };
+
+  const currentDownloadForSelected =
+    selectedModel && downloadProgress?.modelId === selectedModel.id ? downloadProgress : null;
+
+  const percent = currentDownloadForSelected && currentDownloadForSelected.total > 0
+    ? Math.min(100, Math.round((currentDownloadForSelected.downloaded / currentDownloadForSelected.total) * 100))
+    : null;
+
+  const hasError = selectedModel && downloadError?.modelId === selectedModel.id ? downloadError.message : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-center py-4">
@@ -70,36 +106,57 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
           Choose your Local AI Model
         </h2>
         <p className="text-sm text-slate-600 max-w-md mx-auto">
-          HireLens uses local weights to ensure candidate data privacy. Select the tier best suited for your computer.
+          HireLens runs open weights on your machine for complete candidate privacy. Select the tier best suited for your computer.
         </p>
       </div>
 
       {/* Model Selection Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-left">
+      <div role="radiogroup" aria-label="Select local AI model tier" className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-left">
         {(['fast', 'balanced', 'quality'] as ModelTier[]).map((tier) => {
           const config = MODEL_TIER_CONFIG[tier];
+          const model = models.find((m) => m.tier === tier);
           const isRecommended = systemInfo?.recommendedModelTier === tier;
           const isSelected = selectedTier === tier;
+          const isTierDownloaded = model?.status === 'downloaded';
+          const isTierDownloading =
+            !!model && (model.status === 'downloading' || downloadProgress?.modelId === model.id);
 
           return (
             <Card
               key={tier}
-              onClick={() => !isDownloading && !isDownloaded && setSelectedTier(tier)}
+              role="radio"
+              aria-checked={isSelected}
+              tabIndex={isDownloading ? -1 : 0}
+              onClick={() => !isDownloading && setSelectedTier(tier)}
+              onKeyDown={(e) => {
+                if (!isDownloading && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  setSelectedTier(tier);
+                }
+              }}
               className={cn(
-                'cursor-pointer transition-all relative border-2',
+                'cursor-pointer transition-all relative border-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                 isSelected
                   ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
-                  : 'border-slate-200/80 hover:border-slate-300'
+                  : 'border-slate-200/80 hover:border-slate-300',
+                isDownloading && !isSelected && 'opacity-60 cursor-not-allowed'
               )}
             >
               <CardContent className="p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-900 text-sm">{config.label}</span>
-                  {isRecommended && (
-                    <Badge variant="indigo" className="text-[10px]">
-                      Recommended
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {isRecommended && (
+                      <Badge variant="indigo" className="text-[10px]">
+                        Recommended
+                      </Badge>
+                    )}
+                    {isTierDownloaded && (
+                      <Badge variant="success" className="text-[10px]">
+                        Downloaded
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -110,33 +167,71 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
                 <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">
                   {config.notes}
                 </p>
+
+                {isTierDownloading && (
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 pt-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Downloading...</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Progress & Action */}
-      <div className="pt-4 max-w-md mx-auto space-y-4">
+      {/* Error Message Banner */}
+      {hasError && (
+        <div className="max-w-md mx-auto p-3 rounded-xl bg-rose-50 border border-rose-200 text-left flex items-start gap-2.5 text-xs text-rose-800">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold">Download error: </span>
+            <span>{hasError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Progress & Actions */}
+      <div className="pt-2 max-w-md mx-auto space-y-4">
         {isDownloading && (
-          <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4 text-left">
-            <div className="flex justify-between text-xs font-semibold text-slate-700">
+          <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-4 text-left shadow-xs">
+            <div className="flex justify-between items-center text-xs font-semibold text-slate-700">
               <span className="flex items-center gap-1.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
-                Downloading {selectedModel?.displayName}...
+                Downloading {selectedModel?.displayName || 'model'}...
               </span>
-              <span>
-                {downloadProgress
-                  ? `${((downloadProgress.downloaded / (downloadProgress.total || 1)) * 100).toFixed(0)}%`
-                  : 'Starting...'}
+              <span className="text-indigo-600 font-mono">
+                {percent !== null ? `${percent}%` : 'Connecting...'}
               </span>
             </div>
+
             <Progress
-              value={downloadProgress ? (downloadProgress.downloaded / (downloadProgress.total || 1)) * 100 : 15}
+              value={percent !== null ? percent : 5}
             />
-            <div className="flex justify-between text-[11px] text-slate-500">
-              <span>{downloadProgress ? formatBytes(downloadProgress.downloaded) : '0 MB'}</span>
-              <span>{downloadProgress ? `${formatBytes(downloadProgress.speedBps)}/s` : 'Connecting...'}</span>
+
+            <div className="flex justify-between items-center text-[11px] text-slate-500">
+              <span>
+                {currentDownloadForSelected
+                  ? `${formatBytes(currentDownloadForSelected.downloaded)} / ${formatBytes(currentDownloadForSelected.total)}`
+                  : 'Preparing stream...'}
+              </span>
+              <span>
+                {currentDownloadForSelected && currentDownloadForSelected.speedBps > 0
+                  ? `${formatBytes(currentDownloadForSelected.speedBps)}/s`
+                  : 'Connecting...'}
+              </span>
+            </div>
+
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                className="w-full text-xs text-slate-600 hover:text-rose-600 hover:border-rose-200 gap-1.5"
+              >
+                <XCircle className="h-3.5 w-3.5" /> Cancel Download
+              </Button>
             </div>
           </div>
         )}
@@ -144,23 +239,32 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
         {isDownloaded ? (
           <div className="space-y-3">
             <div className="flex items-center justify-center gap-2 text-emerald-600 font-semibold text-sm">
-              <CheckCircle2 className="h-5 w-5" /> Model configured successfully
+              <CheckCircle2 className="h-5 w-5" /> Model configured and ready
             </div>
-            <Button size="lg" onClick={handleFinish} className="w-full">
-              Start Using HireLens
+            <Button size="lg" onClick={handleFinish} className="w-full gap-2">
+              Start Using HireLens <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
-        ) : (
-          <Button
-            size="lg"
-            onClick={handleStartDownload}
-            disabled={isDownloading}
-            className="w-full gap-2"
-          >
-            <Download className="h-4 w-4" />
-            {isDownloading ? 'Downloading AI Engine...' : 'Download & Activate Model'}
-          </Button>
-        )}
+        ) : !isDownloading ? (
+          <div className="space-y-2">
+            <Button
+              size="lg"
+              onClick={handleStartDownload}
+              className="w-full gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {hasError ? 'Retry Download' : 'Download & Activate Model'}
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleSkipForNow}
+              className="text-xs text-slate-400 hover:text-slate-600 underline pt-1 cursor-pointer"
+            >
+              Skip setup and configure models later in Settings
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

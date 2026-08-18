@@ -233,8 +233,6 @@ pub async fn perform_model_download(
         ));
     }
 
-    app.emit("model-download-complete", serde_json::json!({ "model_id": model.id })).ok();
-
     Ok(())
 }
 

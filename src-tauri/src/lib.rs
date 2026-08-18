@@ -99,6 +99,7 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::set_setting,
             commands::settings::get_app_data_dir,
+            commands::settings::open_file_path,
             commands::models::get_models,
             commands::models::download_model,
             commands::models::cancel_model_download,

@@ -54,3 +54,189 @@ export function getScoreColor(score: number) {
     bar: 'bg-rose-500',
   };
 }
+
+/**
+ * Formats and normalizes resume text, reconstructing fragmented words and artificial line breaks
+ * into clean paragraphs, distinct section headers, and formatted bullet points.
+ *
+ * @param raw - The raw resume text string
+ * @returns Cleanly normalized, wrapped resume text
+ */
+export function formatResumeText(raw: string): string {
+  if (!raw) return '';
+
+  const tokens = raw
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  if (tokens.length === 0) return '';
+
+  const isBulletSymbol = (t: string) =>
+    /^[•●▪▫\*\u2022\u2023\u25E6\u2043\u2219]$/.test(t) ||
+    /^\d{1,2}[\.\)]$/.test(t) ||
+    /^\(\d{1,2}\)$/.test(t);
+
+  const KNOWN_SECTIONS_SET = new Set([
+    'PROFESSIONAL SUMMARY',
+    'EXECUTIVE SUMMARY',
+    'SUMMARY',
+    'PROFILE',
+    'TECHNICAL SKILLS',
+    'SKILLS & ABILITIES',
+    'SKILLS',
+    'CORE COMPETENCIES',
+    'PROFESSIONAL EXPERIENCE',
+    'WORK EXPERIENCE',
+    'EXPERIENCE',
+    'EMPLOYMENT HISTORY',
+    'CAREER HISTORY',
+    'KEY PROJECTS',
+    'PERSONAL PROJECTS',
+    'PROJECTS',
+    'EDUCATION',
+    'ACADEMIC BACKGROUND',
+    'QUALIFICATIONS',
+    'CERTIFICATIONS & LICENSES',
+    'CERTIFICATIONS',
+    'ACHIEVEMENTS',
+    'AWARDS',
+    'PUBLICATIONS',
+    'LANGUAGES',
+    'INTERESTS',
+    'VOLUNTEER EXPERIENCE',
+    'VOLUNTEERING',
+  ]);
+
+  const lines: string[] = [];
+  let currentLine: string[] = [];
+
+  const flushLine = () => {
+    if (currentLine.length > 0) {
+      lines.push(currentLine.join(' '));
+      currentLine = [];
+    }
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const nextToken = i + 1 < tokens.length ? tokens[i + 1] : '';
+    const next2Token = i + 2 < tokens.length ? tokens[i + 2] : '';
+
+    const candidate3 = `${token} ${nextToken} ${next2Token}`.toUpperCase();
+    const candidate2 = `${token} ${nextToken}`.toUpperCase();
+    const candidate1 = token.toUpperCase();
+
+    let matchedHeader: string | null = null;
+    let headerTokensCount = 0;
+
+    const isUpper = (t: string) => t === t.toUpperCase() && /[A-Z]/.test(t);
+    const upperRun1 = isUpper(token);
+    const upperRun2 = upperRun1 && isUpper(nextToken);
+    const upperRun3 = upperRun2 && isUpper(next2Token);
+
+    if (upperRun3 && KNOWN_SECTIONS_SET.has(candidate3)) {
+      matchedHeader = candidate3;
+      headerTokensCount = 3;
+    } else if (upperRun2 && KNOWN_SECTIONS_SET.has(candidate2)) {
+      matchedHeader = candidate2;
+      headerTokensCount = 2;
+    } else if (
+      upperRun1 &&
+      KNOWN_SECTIONS_SET.has(candidate1) &&
+      nextToken !== '&' &&
+      nextToken !== 'and' &&
+      !nextToken.endsWith(':') &&
+      !token.endsWith(':')
+    ) {
+      matchedHeader = candidate1;
+      headerTokensCount = 1;
+    }
+
+    if (matchedHeader) {
+      flushLine();
+      lines.push('');
+      lines.push(matchedHeader);
+      lines.push('');
+      i += headerTokensCount - 1;
+      continue;
+    }
+
+    // If token is a bullet symbol (●, •, etc.)
+    if (isBulletSymbol(token)) {
+      flushLine();
+      currentLine.push('●');
+      continue;
+    }
+
+    // Role / Project title boundary checks:
+    const isRoleStart =
+      (token === 'Software' ||
+        token === 'Senior' ||
+        token === 'Lead' ||
+        token === 'Product' ||
+        token === 'Frontend' ||
+        token === 'Backend' ||
+        token === 'Full-Stack' ||
+        token === 'Staff' ||
+        token === 'Principal') &&
+      (nextToken === 'Engineer' ||
+        nextToken === 'Developer' ||
+        nextToken === 'Architect' ||
+        nextToken === 'Designer' ||
+        nextToken === 'Manager' ||
+        nextToken === 'Development');
+
+    const isProjectOrEduStart =
+      (token === 'Bachelor' && nextToken === 'of') ||
+      (token === 'Master' && nextToken === 'of') ||
+      (token === 'B.E.' || token === 'B.Tech' || token === 'B.S.' || token === 'M.S.');
+
+    if ((isRoleStart || isProjectOrEduStart) && currentLine.length > 0 && currentLine.includes('●')) {
+      flushLine();
+      lines.push('');
+    }
+
+    currentLine.push(token);
+
+    // If token is the end of a date range like "Present" or "2025" and next token is not part of date
+    const isDateEnd =
+      (token === 'Present' || token === 'Current' || /^(19|20)\d{2}$/.test(token)) &&
+      nextToken !== '–' &&
+      nextToken !== '-' &&
+      nextToken !== 'to' &&
+      nextToken !== 'Present' &&
+      !/^(19|20)\d{2}$/.test(nextToken);
+
+    if (
+      isDateEnd &&
+      currentLine.some((w) => ['—', '-', '–'].includes(w)) &&
+      !currentLine.includes('●') &&
+      currentLine.length >= 4
+    ) {
+      flushLine();
+    }
+  }
+
+  flushLine();
+
+  // Normalize blank lines
+  const cleaned: string[] = [];
+  let prevBlank = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (!prevBlank && cleaned.length > 0) {
+        cleaned.push('');
+        prevBlank = true;
+      }
+    } else {
+      cleaned.push(trimmed);
+      prevBlank = false;
+    }
+  }
+
+  return cleaned.join('\n');
+}
+
+

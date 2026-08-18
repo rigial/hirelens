@@ -14,23 +14,42 @@ import { useSettingsStore } from './stores/useSettingsStore';
 import { api } from './lib/tauri';
 import { CandidateAnalysisCompleteEvent } from './types/processing';
 
+interface ModelDownloadProgressPayload {
+  model_id: string;
+  downloaded_bytes: number;
+  total_bytes: number;
+  speed_bps: number;
+}
+
+interface ModelDownloadCompletePayload {
+  model_id: string;
+}
+
+interface ModelDownloadErrorPayload {
+  model_id: string;
+  error: string;
+}
+
 export function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
-  const { handleAnalysisComplete } = useCandidateStore();
-  const { setDownloadProgress, fetchModels } = useSettingsStore();
+  const handleAnalysisComplete = useCandidateStore((s) => s.handleAnalysisComplete);
+  const setDownloadProgress = useSettingsStore((s) => s.setDownloadProgress);
+  const setDownloadError = useSettingsStore((s) => s.setDownloadError);
+  const fetchModels = useSettingsStore((s) => s.fetchModels);
 
   useEffect(() => {
     // Check onboarding status from settings
     api.settings.getAll().then((settings) => {
       setOnboardingCompleted(settings.onboarding_completed === 'true');
     }).catch(() => {
-      setOnboardingCompleted(true);
+      setOnboardingCompleted(false);
     });
 
     // Tauri Event Listeners
     let unlistenAnalysis: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
     let unlistenComplete: (() => void) | undefined;
+    let unlistenError: (() => void) | undefined;
 
     listen<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
       handleAnalysisComplete(event.payload);
@@ -38,7 +57,7 @@ export function App() {
       unlistenAnalysis = unlisten;
     });
 
-    listen<any>('model-download-progress', (event) => {
+    listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
       const { model_id, downloaded_bytes, total_bytes, speed_bps } = event.payload;
       setDownloadProgress({
         modelId: model_id,
@@ -50,19 +69,30 @@ export function App() {
       unlistenProgress = unlisten;
     });
 
-    listen<any>('model-download-complete', () => {
+    listen<ModelDownloadCompletePayload>('model-download-complete', () => {
       setDownloadProgress(null);
+      setDownloadError(null);
       fetchModels();
     }).then((unlisten) => {
       unlistenComplete = unlisten;
+    });
+
+    listen<ModelDownloadErrorPayload>('model-download-error', (event) => {
+      const { model_id, error } = event.payload;
+      setDownloadProgress(null);
+      setDownloadError({ modelId: model_id, message: error || 'Model download failed' });
+      fetchModels();
+    }).then((unlisten) => {
+      unlistenError = unlisten;
     });
 
     return () => {
       if (unlistenAnalysis) unlistenAnalysis();
       if (unlistenProgress) unlistenProgress();
       if (unlistenComplete) unlistenComplete();
+      if (unlistenError) unlistenError();
     };
-  }, [handleAnalysisComplete, setDownloadProgress, fetchModels]);
+  }, [handleAnalysisComplete, setDownloadProgress, setDownloadError, fetchModels]);
 
   if (onboardingCompleted === null) {
     return (

@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { HardDrive, ShieldCheck, Info, FolderOpen, Copy, Check, AlertCircle, RotateCcw } from 'lucide-react';
-import { openPath } from '@tauri-apps/plugin-opener';
 import { ModelSelector } from '../components/settings/ModelSelector';
 import { ConcurrencySettings } from '../components/settings/ConcurrencySettings';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -49,13 +48,25 @@ export function SettingsPage() {
     setIsOpening(true);
     setActionError(null);
     try {
-      await openPath(appDataDir);
+      await api.system.openPath(appDataDir);
     } catch (err: any) {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to open directory in file explorer';
       setActionError(msg);
       setTimeout(() => setActionError(null), 5000);
     } finally {
       setIsOpening(false);
+    }
+  };
+
+  const handleOpenUrl = async (url: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setActionError(null);
+    try {
+      await api.system.openPath(url);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to open link';
+      setActionError(msg);
+      setTimeout(() => setActionError(null), 5000);
     }
   };
 
@@ -190,8 +201,27 @@ export function SettingsPage() {
           <p className="font-semibold text-slate-900">
             {APP_NAME} v1.0.0 — {APP_TAGLINE}
           </p>
-          <p className="leading-relaxed">
-            Built with Tauri 2, Rust backend engine, SQLite relational vector store, and React frontend.
+          <p className="leading-relaxed text-slate-600">
+            Copyright © {new Date().getFullYear()}. All rights reserved —{' '}
+            <a
+              href="https://rigial.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => handleOpenUrl('https://rigial.com/', e)}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
+            >
+              Rigial.com
+            </a>{' '}
+            — M R Kishore Kumar —{' '}
+            <a
+              href="https://www.linkedin.com/in/mrkishorekumar/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => handleOpenUrl('https://www.linkedin.com/in/mrkishorekumar/', e)}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
+            >
+              LinkedIn
+            </a>
           </p>
         </CardContent>
       </Card>

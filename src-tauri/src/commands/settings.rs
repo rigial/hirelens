@@ -30,6 +30,9 @@ pub async fn get_settings(
 }
 
 /// Upserts an individual application setting key-value pair into the database.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 #[tauri::command]
 pub async fn set_setting(
     state: State<'_, AppState>,
@@ -46,6 +49,9 @@ pub async fn set_setting(
 }
 
 /// Returns the filesystem path to the application's local data storage directory.
+///
+/// # Returns
+/// The formatted application data directory path as a string.
 #[tauri::command]
 pub async fn get_app_data_dir(
     state: State<'_, AppState>,
@@ -67,5 +73,3 @@ mod tests {
         assert_eq!(format_app_data_dir(&nested_dir), "/var/data/hirelens/storage");
     }
 }
-
-

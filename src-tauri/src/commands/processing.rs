@@ -107,6 +107,9 @@ pub async fn check_duplicate_resumes(
 ///
 /// Copies files into the application storage directory, creates database resume records, and
 /// schedules extraction/analysis jobs on the background worker pool.
+///
+/// # Errors
+/// Returns an error if destination directory creation or file operations fail.
 #[tauri::command]
 pub async fn upload_resumes(
     app: AppHandle,
@@ -188,6 +191,9 @@ pub async fn upload_resumes(
 }
 
 /// Tauri command to fetch the current processing statistics and queue status for a job opening.
+///
+/// # Errors
+/// Returns an error if querying the database fails.
 #[tauri::command]
 pub async fn get_processing_status(
     state: State<'_, AppState>,
@@ -302,5 +308,3 @@ mod tests {
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
-
-

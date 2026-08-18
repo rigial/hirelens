@@ -102,6 +102,7 @@ pub fn run() {
             commands::jobs::update_job,
             commands::jobs::archive_job,
             commands::processing::upload_resumes,
+            commands::processing::check_duplicate_resumes,
             commands::processing::get_processing_status,
             commands::candidates::get_candidates,
             commands::candidates::get_candidate_detail,

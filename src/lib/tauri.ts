@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Job, JobSummary, CreateJobPayload, UpdateJobPayload } from '../types/job';
 import { CandidateWithAnalysis, CandidateDetail } from '../types/candidate';
-import { Resume, ProcessingStatus } from '../types/processing';
+import { Resume, ProcessingStatus, DuplicateResumeInfo } from '../types/processing';
 import { Model, SystemInfo } from '../types/settings';
 
 export const api = {
@@ -26,6 +26,8 @@ export const api = {
   resumes: {
     upload: (jobId: string, filePaths: string[]) =>
       invoke<Resume[]>('upload_resumes', { jobId, filePaths }),
+    checkDuplicates: (jobId: string, filePaths: string[]) =>
+      invoke<DuplicateResumeInfo[]>('check_duplicate_resumes', { jobId, filePaths }),
     getStatus: (jobId: string) => invoke<ProcessingStatus>('get_processing_status', { jobId }),
   },
   models: {

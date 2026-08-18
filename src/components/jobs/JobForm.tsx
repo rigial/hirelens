@@ -10,6 +10,11 @@ import { SkillsInput } from './SkillsInput';
 import { useJobStore } from '../../stores/useJobStore';
 import { SkillPayload } from '../../types/job';
 
+/**
+ * Provides a form for creating or editing a job opening.
+ *
+ * @returns The job creation or editing form.
+ */
 export function JobForm() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();

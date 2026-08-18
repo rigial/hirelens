@@ -21,7 +21,33 @@ pub struct DuplicateResumeInfo {
     pub existing_status: Option<String>,
 }
 
-#[tauri::command]
+/// Checks supplied files for existing resumes matching the specified job, file name, and size.
+///
+/// Missing files are checked using a size of zero. Each result includes the file metadata and,
+/// when a match exists, the matching resume's identifier, upload time, and status.
+///
+/// # Errors
+///
+/// Returns an error if the database query fails.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn example(state: tauri::State<'_, AppState>) -> Result<(), String> {
+/// let results = check_duplicate_resumes(
+///     state,
+///     "job-123".to_string(),
+///     vec!["/tmp/resume.pdf".to_string()],
+/// ).await?;
+///
+/// assert_eq!(results.len(), 1);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Returns
+///
+/// A result for each supplied file, indicating whether it matches an existing resume.
 pub async fn check_duplicate_resumes(
     state: State<'_, AppState>,
     job_id: String,
@@ -75,6 +101,32 @@ pub async fn check_duplicate_resumes(
     Ok(results)
 }
 
+/// Copies existing resume files into the job's application data directory,
+/// records them, and queues them for background processing.
+///
+/// Missing source paths are skipped. Errors while preparing the destination,
+/// copying files, recording resumes, or queueing processing jobs stop the
+/// operation.
+///
+/// # Arguments
+///
+/// * `job_id` - Identifier of the job associated with the resumes.
+/// * `file_paths` - Paths to the resume files to upload.
+///
+/// # Returns
+///
+/// The resumes that were successfully uploaded.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn example(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+/// let resumes = upload_resumes(app, state, "job-123".into(), vec![
+///     "/tmp/resume.pdf".into(),
+/// ]).await.unwrap();
+/// assert_eq!(resumes.len(), 1);
+/// # }
+/// ```
 #[tauri::command]
 pub async fn upload_resumes(
     app: AppHandle,
@@ -155,7 +207,22 @@ pub async fn upload_resumes(
     Ok(uploaded_resumes)
 }
 
-#[tauri::command]
+/// Retrieves the processing status for a job.
+///
+/// # Arguments
+///
+/// * `job_id` - Identifier of the job whose processing status should be retrieved.
+///
+/// # Returns
+///
+/// The job's processing status, or a string describing the database error.
+///
+/// # Examples
+///
+/// ```no_run
+/// let status = get_processing_status(state, "job-id".to_string()).await?;
+/// # Ok::<(), String>(())
+/// ```
 pub async fn get_processing_status(
     state: State<'_, AppState>,
     job_id: String,

@@ -30,6 +30,13 @@ interface CandidateDetailProps {
   onUpdateStatus: (status: string, notes?: string) => Promise<void>;
 }
 
+/**
+ * Renders a candidate’s detailed review page for a job, including match analysis, resume text, and review actions.
+ *
+ * @param candidate - The candidate and their analysis, resume, and shortlist information
+ * @param jobId - The identifier of the associated job
+ * @param onUpdateStatus - Updates the candidate’s shortlist status and review notes
+ */
 export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateDetailProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'analysis' | 'resume'>('analysis');

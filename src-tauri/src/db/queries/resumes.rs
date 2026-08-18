@@ -107,11 +107,54 @@ pub fn get_resume(conn: &Connection, resume_id: &str) -> Result<Resume> {
     })
 }
 
+/// Retrieves the raw text associated with a resume.
+///
+/// # Examples
+///
+/// ```
+/// let conn = rusqlite::Connection::open_in_memory().unwrap();
+/// conn.execute(
+///     "CREATE TABLE resumes (id TEXT PRIMARY KEY, raw_text TEXT)",
+///     [],
+/// ).unwrap();
+/// conn.execute(
+///     "INSERT INTO resumes (id, raw_text) VALUES (?1, ?2)",
+///     ["resume-1", "Resume content"],
+/// ).unwrap();
+///
+/// assert_eq!(
+///     get_resume_raw_text(&conn, "resume-1").unwrap(),
+///     Some("Resume content".to_string())
+/// );
+/// ```
 pub fn get_resume_raw_text(conn: &Connection, resume_id: &str) -> Result<Option<String>> {
     let mut stmt = conn.prepare("SELECT raw_text FROM resumes WHERE id = ?1")?;
     stmt.query_row(params![resume_id], |row| row.get(0))
 }
 
+/// Finds the most recently uploaded resume matching a job, file name, and file size.
+///
+/// # Parameters
+///
+/// * `job_id` - Identifies the job associated with the resume.
+/// * `file_name` - The resume's file name.
+/// * `file_size` - The resume's file size in bytes.
+///
+/// # Returns
+///
+/// `Some(Resume)` for the latest matching resume, or `None` when no match exists.
+///
+/// # Examples
+///
+/// ```no_run
+/// let conn = rusqlite::Connection::open("app.db")?;
+/// let resume = find_resume_by_name_and_size(&conn, "job-123", "resume.pdf", 4096)?;
+///
+/// if let Some(resume) = resume {
+///     println!("{}", resume.file_name);
+/// }
+/// # Ok::<(), rusqlite::Error>(())
+/// ```
 pub fn find_resume_by_name_and_size(
     conn: &Connection,
     job_id: &str,

@@ -18,6 +18,13 @@ use workers::queue::ProcessingJob;
 use db::connection::init_db;
 use db::queries::queue::reset_interrupted_queue;
 
+/// Builds and starts the HireLens Tauri application.
+///
+/// # Examples
+///
+/// ```no_run
+/// run();
+/// ```
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

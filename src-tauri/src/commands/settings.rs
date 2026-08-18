@@ -22,7 +22,21 @@ pub async fn get_settings(
     Ok(map)
 }
 
-#[tauri::command]
+/// Stores a setting under the specified key, replacing its existing value when present.
+///
+/// Database errors are returned as error strings.
+///
+/// # Examples
+///
+/// ```no_run
+/// let result = set_setting(state, "theme".into(), "dark".into()).await;
+/// assert!(result.is_ok());
+/// ```
+///
+/// # Arguments
+///
+/// * `key` - The setting's unique key.
+/// * `value` - The value to store.
 pub async fn set_setting(
     state: State<'_, AppState>,
     key: String,
@@ -37,6 +51,20 @@ pub async fn set_setting(
     Ok(())
 }
 
+/// Retrieves the application data directory as a UTF-8 string.
+///
+/// Invalid UTF-8 path components are replaced during conversion.
+///
+/// # Examples
+///
+/// ```no_run
+/// let path = get_app_data_dir(state).await?;
+/// # Ok::<(), String>(())
+/// ```
+///
+/// # Returns
+///
+/// The application data directory path as a string.
 #[tauri::command]
 pub async fn get_app_data_dir(
     state: State<'_, AppState>,

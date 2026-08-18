@@ -9,6 +9,11 @@ import { useSettingsStore } from '../stores/useSettingsStore';
 import { APP_NAME, APP_TAGLINE } from '../lib/constants';
 import { api } from '../lib/tauri';
 
+/**
+ * Renders the settings screen for local AI models, worker concurrency, storage, privacy, and application information.
+ *
+ * @returns The settings page interface.
+ */
 export function SettingsPage() {
   const { fetchSettings, fetchModels, fetchSystemInfo } = useSettingsStore();
   const [appDataDir, setAppDataDir] = useState<string>('');

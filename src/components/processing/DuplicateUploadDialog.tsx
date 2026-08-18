@@ -12,6 +12,13 @@ interface DuplicateUploadDialogProps {
   onCancel: () => void;
 }
 
+/**
+ * Formats a byte count using an appropriate storage unit.
+ *
+ * @param bytes - The number of bytes to format
+ * @param decimals - The maximum number of decimal places to display
+ * @returns The formatted byte count with its storage unit
+ */
 function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -21,6 +28,12 @@ function formatBytes(bytes: number, decimals = 1): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+/**
+ * Formats an upload date for display.
+ *
+ * @param dateStr - The date string to format; missing values are displayed as “Recently”
+ * @returns The formatted date, or the original string if formatting fails
+ */
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return 'Recently';
   try {
@@ -36,6 +49,17 @@ function formatDate(dateStr?: string | null): string {
   }
 }
 
+/**
+ * Displays a modal for reviewing duplicate and new resume uploads.
+ *
+ * Pressing Escape or canceling the dialog invokes `onCancel`.
+ *
+ * @param isOpen - Whether the dialog is visible
+ * @param duplicateItems - Uploaded files classified as duplicates or new files
+ * @param onConfirmUploadAll - Handles re-uploading all listed files
+ * @param onConfirmSkipDuplicates - Handles uploading only new files
+ * @param onCancel - Handles dismissing the dialog
+ */
 export function DuplicateUploadDialog({
   isOpen,
   duplicateItems,

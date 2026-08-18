@@ -13,6 +13,14 @@ interface CandidateCardProps {
   onUpdateStatus: (candidateId: string, status: string) => void;
 }
 
+/**
+ * Displays a candidate's resume analysis, processing state, shortlist status, and available actions.
+ *
+ * @param candidate - The candidate and resume analysis data to display
+ * @param jobId - The job associated with the candidate
+ * @param onUpdateStatus - Callback invoked when the candidate's shortlist status changes
+ * @returns The rendered candidate card
+ */
 export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCardProps) {
   const navigate = useNavigate();
   const { retryResume } = useCandidateStore();

@@ -10,6 +10,12 @@ interface DropZoneProps {
   onUploaded?: () => void;
 }
 
+/**
+ * Provides a drag-and-drop and file-picker interface for uploading resumes to a job.
+ *
+ * @param jobId - The job identifier associated with the resumes
+ * @param onUploaded - Optional callback invoked after a successful upload
+ */
 export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

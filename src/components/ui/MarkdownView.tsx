@@ -9,7 +9,10 @@ interface MarkdownViewProps {
 }
 
 /**
- * Format inline markdown elements (bold, italic, strikethrough, inline code, links)
+ * Renders supported inline Markdown syntax as styled React nodes.
+ *
+ * @param text - The text containing inline Markdown.
+ * @returns React nodes containing formatted Markdown and preserved text.
  */
 function renderInlineMarkdown(text: string): React.ReactNode[] {
   // Regex to match inline tokens:
@@ -98,6 +101,13 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : [text];
 }
 
+/**
+ * Renders Markdown content as styled React elements.
+ *
+ * @param content - The Markdown content to render
+ * @param className - Optional additional CSS classes for the container
+ * @param placeholder - Text displayed when the content is empty
+ */
 export function MarkdownView({
   content,
   className,

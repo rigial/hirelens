@@ -49,11 +49,15 @@ export function SettingsPage() {
     setIsOpening(true);
     setActionError(null);
     try {
-      await openPath(appDataDir);
-    } catch (err: any) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to open directory in file explorer';
-      setActionError(msg);
-      setTimeout(() => setActionError(null), 5000);
+      await api.system.openPath(appDataDir);
+    } catch {
+      try {
+        await openPath(appDataDir);
+      } catch (err: any) {
+        const msg = typeof err === 'string' ? err : err?.message || 'Failed to open directory in file explorer';
+        setActionError(msg);
+        setTimeout(() => setActionError(null), 5000);
+      }
     } finally {
       setIsOpening(false);
     }
@@ -190,8 +194,33 @@ export function SettingsPage() {
           <p className="font-semibold text-slate-900">
             {APP_NAME} v1.0.0 — {APP_TAGLINE}
           </p>
-          <p className="leading-relaxed">
-            Built with Tauri 2, Rust backend engine, SQLite relational vector store, and React frontend.
+          <p className="leading-relaxed text-slate-600">
+            Copyright © {new Date().getFullYear()}. All rights reserved —{' '}
+            <a
+              href="https://rigial.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                api.system.openPath('https://rigial.com/');
+              }}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
+            >
+              Rigial.com
+            </a>{' '}
+            |{' '}
+            <a
+              href="https://www.linkedin.com/in/mrkishorekumar/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                api.system.openPath('https://www.linkedin.com/in/mrkishorekumar/');
+              }}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium cursor-pointer"
+            >
+              M R Kishore Kumar
+            </a>
           </p>
         </CardContent>
       </Card>

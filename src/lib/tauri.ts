@@ -38,6 +38,7 @@ export const api = {
   },
   system: {
     getInfo: () => invoke<SystemInfo>('get_system_info'),
+    openPath: (path: string) => invoke<void>('open_file_path', { path }),
   },
   settings: {
     getAll: () => invoke<Record<string, string>>('get_settings'),

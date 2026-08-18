@@ -270,7 +270,6 @@ impl LlamaClient {
         let location = None;
         let mut skills = Vec::new();
         let mut experience_years = None;
-        let mut education = Vec::new();
         let work_experience = Vec::new();
 
         // 1. Email Regex
@@ -328,23 +327,8 @@ impl LlamaClient {
             }
         }
 
-        // 6. Education heuristic
-        let degrees = ["Bachelor", "B.Tech", "B.E.", "B.S.", "BS", "Master", "M.Tech", "M.S.", "MS", "Ph.D", "PhD", "Associate Degree"];
-        for line in text.lines() {
-            for deg in degrees {
-                if line.to_lowercase().contains(&deg.to_lowercase()) {
-                    education.push(Education {
-                        degree: deg.to_string(),
-                        institution: line.trim().to_string(),
-                        year: None,
-                    });
-                    break;
-                }
-            }
-            if education.len() >= 2 {
-                break;
-            }
-        }
+        // 6. Education extraction
+        let education = extract_education_from_text(text);
 
         ExtractedCandidate {
             name,
@@ -359,6 +343,155 @@ impl LlamaClient {
             languages: Vec::new(),
         }
     }
+}
+
+/// Strictly extracts educational credentials from resume text.
+///
+/// Ensures credentials only originate from authentic education sections or explicit
+/// degree patterns with word boundaries, preventing false positives from technical keywords
+/// (e.g., "CMS", "AWS", "systems").
+pub fn extract_education_from_text(text: &str) -> Vec<Education> {
+    let mut education_entries = Vec::new();
+    let lines: Vec<&str> = text.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+
+    let mut in_edu_section = false;
+    let mut edu_lines = Vec::new();
+
+    let section_headers = [
+        "EXPERIENCE", "WORK EXPERIENCE", "PROFESSIONAL EXPERIENCE", "EMPLOYMENT HISTORY",
+        "CAREER HISTORY", "SKILLS", "TECHNICAL SKILLS", "PROJECTS", "KEY PROJECTS",
+        "PERSONAL PROJECTS", "CERTIFICATIONS", "ACHIEVEMENTS", "AWARDS", "PUBLICATIONS",
+        "LANGUAGES", "INTERESTS", "VOLUNTEER", "VOLUNTEERING", "SUMMARY", "PROFESSIONAL SUMMARY",
+    ];
+
+    for line in &lines {
+        let upper = line.to_uppercase();
+        if upper == "EDUCATION" || upper == "ACADEMIC BACKGROUND" || upper == "ACADEMICS" || upper == "QUALIFICATIONS" {
+            in_edu_section = true;
+            continue;
+        }
+
+        if in_edu_section {
+            if section_headers.iter().any(|&hdr| upper == hdr || upper.starts_with(hdr)) {
+                break;
+            }
+            edu_lines.push(*line);
+        }
+    }
+
+    let has_edu_section = !edu_lines.is_empty();
+    let search_lines = if has_edu_section {
+        &edu_lines[..]
+    } else {
+        &lines[..]
+    };
+
+    let degree_patterns: &[(&str, &str)] = &[
+        (r"(?i)\b(Bachelor(?:'s)?(?:\s+of\s+[A-Za-z\s&]+)?|B\.?E\.?|B\.?Tech|B\.?S\.?(?:c)?|BCA|BBA)\b", "Bachelor"),
+        (r"(?i)\b(Master(?:'s)?(?:\s+of\s+[A-Za-z\s&]+)?|M\.?E\.?|M\.?Tech|M\.?S\.?(?:c)?|MCA|MBA)\b", "Master"),
+        (r"(?i)\b(Ph\.?D\.?|Doctorate(?:\s+of\s+[A-Za-z\s&]+)?)\b", "Ph.D"),
+        (r"(?i)\b(Associate(?:'s)?(?:\s+Degree|\s+of\s+[A-Za-z\s&]+)?)\b", "Associate Degree"),
+        (r"(?i)\b(Diploma(?:\s+in\s+[A-Za-z\s&]+)?)\b", "Diploma"),
+    ];
+
+    let year_re = Regex::new(r"\b(19\d{2}|20\d{2})\b").ok();
+    let inst_keywords = ["University", "Institute", "College", "School", "Academy", "Polytechnic", "Campus"];
+
+    let mut i = 0;
+    while i < search_lines.len() {
+        let line = search_lines[i];
+        let mut found_degree: Option<String> = None;
+        let mut degree_category = "";
+
+        for (pattern, cat) in degree_patterns {
+            if let Ok(re) = Regex::new(pattern) {
+                if let Some(mat) = re.find(line) {
+                    found_degree = Some(mat.as_str().trim().to_string());
+                    degree_category = cat;
+                    break;
+                }
+            }
+        }
+
+        if let Some(deg) = found_degree {
+            // When outside an explicit education section, require strong institution keywords or explicit degree phrasing
+            if !has_edu_section {
+                let has_inst = inst_keywords.iter().any(|k| line.contains(k));
+                let is_explicit_degree = deg.to_lowercase().contains("bachelor")
+                    || deg.to_lowercase().contains("master")
+                    || deg.to_lowercase().contains("doctorate")
+                    || deg.to_lowercase().contains("degree");
+                if !has_inst && !is_explicit_degree {
+                    i += 1;
+                    continue;
+                }
+            }
+
+            let mut year = None;
+            if let Some(ref y_re) = year_re {
+                if let Some(y_mat) = y_re.find(line) {
+                    year = Some(y_mat.as_str().to_string());
+                }
+            }
+
+            let remainder = line.replace(&deg, "").trim().to_string();
+            let mut clean_rem = remainder.trim_matches(|c: char| c == ',' || c == '-' || c == '|' || c == '–' || c == '—' || c.is_whitespace()).to_string();
+            if let Some(ref y_val) = year {
+                clean_rem = clean_rem.replace(y_val, "");
+                clean_rem = clean_rem.trim_matches(|c: char| c == ',' || c == '-' || c == '|' || c == '–' || c == '—' || c.is_whitespace()).to_string();
+            }
+
+            let mut institution = String::new();
+            if !clean_rem.is_empty() && (inst_keywords.iter().any(|k| clean_rem.contains(k)) || clean_rem.len() > 3) {
+                institution = clean_rem.clone();
+            } else if i + 1 < search_lines.len() {
+                let next_line = search_lines[i + 1];
+                let next_upper = next_line.to_uppercase();
+                let is_next_header = section_headers.iter().any(|&hdr| next_upper == hdr);
+                let is_next_degree = degree_patterns.iter().any(|(pat, _)| Regex::new(pat).map_or(false, |r| r.is_match(next_line)));
+
+                if !is_next_header && !is_next_degree {
+                    let mut inst_str = next_line.trim().to_string();
+                    if year.is_none() {
+                        if let Some(ref y_re) = year_re {
+                            if let Some(y_mat) = y_re.find(next_line) {
+                                year = Some(y_mat.as_str().to_string());
+                            }
+                        }
+                    }
+                    if let Some(ref y_val) = year {
+                        inst_str = inst_str.replace(y_val, "");
+                        inst_str = inst_str.trim_matches(|c: char| c == ',' || c == '-' || c == '|' || c == '–' || c == '—' || c.is_whitespace()).to_string();
+                    }
+                    institution = inst_str;
+                    i += 1;
+                }
+            }
+
+            if institution.is_empty() {
+                institution = if !clean_rem.is_empty() { clean_rem } else { "Educational Institution".to_string() };
+            }
+
+            let formatted_degree = if deg.len() <= 4 && !deg.contains(' ') {
+                format!("{} ({})", degree_category, deg)
+            } else {
+                deg
+            };
+
+            education_entries.push(Education {
+                degree: formatted_degree,
+                institution,
+                year,
+            });
+        }
+
+        i += 1;
+        if education_entries.len() >= 3 {
+            break;
+        }
+    }
+
+    education_entries
 }
 
 #[cfg(test)]
@@ -427,5 +560,53 @@ Bachelor of Science in Computer Science, Stanford University
         assert!(analysis.llm_score >= 10.0 && analysis.llm_score <= 98.0);
         assert!(!analysis.summary.is_empty());
         assert!(!analysis.strengths.is_empty());
+    }
+
+    #[test]
+    fn test_extract_education_no_false_cms_positives() {
+        let resume_text = r#"
+KISHORE KUMAR
+Software Engineer
+
+EXPERIENCE
+Software Engineer — Apparel Group — 6thStreet.com
+● Delivered 20+ features for 6thStreet's React Native app.
+● Managed CMS integration, enabling dynamic and seamless content updates without redeploys.
+● Integrated AWS Secrets Manager for secure credential management.
+
+EDUCATION
+Bachelor of Engineering
+Sri Shakthi Institute of Engineering and Technology
+        "#;
+
+        let edu = extract_education_from_text(resume_text);
+        assert_eq!(edu.len(), 1);
+        assert_eq!(edu[0].degree, "Bachelor of Engineering");
+        assert_eq!(edu[0].institution, "Sri Shakthi Institute of Engineering and Technology");
+
+        // Verify CMS / AWS was not extracted as a degree
+        for e in &edu {
+            assert!(!e.degree.contains("CMS"));
+            assert!(!e.institution.contains("CMS"));
+            assert_ne!(e.degree, "MS");
+        }
+    }
+
+    #[test]
+    fn test_extract_education_multiple_real_degrees() {
+        let resume_text = r#"
+EDUCATION
+Master of Science in Computer Science, Stanford University, 2021
+Bachelor of Technology, MIT, 2019
+        "#;
+
+        let edu = extract_education_from_text(resume_text);
+        assert_eq!(edu.len(), 2);
+        assert!(edu[0].degree.contains("Master"));
+        assert_eq!(edu[0].institution, "Stanford University");
+        assert_eq!(edu[0].year, Some("2021".to_string()));
+        assert!(edu[1].degree.contains("Bachelor"));
+        assert_eq!(edu[1].institution, "MIT");
+        assert_eq!(edu[1].year, Some("2019".to_string()));
     }
 }

@@ -59,6 +59,47 @@ pub async fn get_app_data_dir(
     Ok(format_app_data_dir(&state.app_data_dir))
 }
 
+/// Opens a file or directory using the host operating system's default viewer/application.
+#[tauri::command]
+pub async fn open_file_path(
+    path: String,
+) -> Result<(), String> {
+    let is_url = path.starts_with("http://") || path.starts_with("https://");
+    if !is_url {
+        let p = Path::new(&path);
+        if !p.exists() {
+            return Err(format!("File does not exist on disk: {}", path));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

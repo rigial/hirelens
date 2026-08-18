@@ -52,10 +52,17 @@ pub async fn download_model(
         ).ok();
     }
 
+    let flags_arc = Arc::clone(&state.download_cancel_flags);
+
     tauri::async_runtime::spawn(async move {
         let res = perform_model_download(app_clone.clone(), models_dir.clone(), model_clone.clone(), cancel_flag).await;
-        let db = state_db.lock().await;
+        
+        {
+            let mut flags = flags_arc.lock().await;
+            flags.remove(&model_clone.id);
+        }
 
+        let db = state_db.lock().await;
         match res {
             Ok(_) => {
                 let file_path = models_dir.join(&model_clone.file_name).to_string_lossy().to_string();
@@ -64,6 +71,10 @@ pub async fn download_model(
                     "UPDATE models SET status = 'downloaded', file_path = ?1, downloaded_at = ?2 WHERE id = ?3",
                     rusqlite::params![file_path, now, model_clone.id],
                 ).ok();
+
+                app_clone.emit("model-download-complete", serde_json::json!({
+                    "model_id": model_clone.id
+                })).ok();
             }
             Err(err) => {
                 db.execute(

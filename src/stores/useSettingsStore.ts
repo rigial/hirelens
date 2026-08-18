@@ -7,6 +7,7 @@ interface SettingsStore {
   models: Model[];
   systemInfo: SystemInfo | null;
   downloadProgress: { modelId: string; downloaded: number; total: number; speedBps: number } | null;
+  downloadError: { modelId: string; message: string } | null;
   isLoading: boolean;
   error: string | null;
   fetchSettings: () => Promise<void>;
@@ -17,6 +18,7 @@ interface SettingsStore {
   cancelModelDownload: (modelId: string) => Promise<void>;
   setActiveModel: (modelId: string) => Promise<void>;
   setDownloadProgress: (progress: { modelId: string; downloaded: number; total: number; speedBps: number } | null) => void;
+  setDownloadError: (err: { modelId: string; message: string } | null) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -24,6 +26,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   models: [],
   systemInfo: null,
   downloadProgress: null,
+  downloadError: null,
   isLoading: false,
   error: null,
 
@@ -65,17 +68,19 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   downloadModel: async (modelId: string) => {
     try {
+      set({ downloadError: null });
       await api.models.download(modelId);
       await get().fetchModels();
     } catch (err: any) {
-      set({ error: err?.toString() });
+      const errMsg = err?.toString() || 'Failed to start model download';
+      set({ downloadError: { modelId, message: errMsg }, error: errMsg });
     }
   },
 
   cancelModelDownload: async (modelId: string) => {
     try {
       await api.models.cancelDownload(modelId);
-      set({ downloadProgress: null });
+      set({ downloadProgress: null, downloadError: null });
       await get().fetchModels();
     } catch (err: any) {
       set({ error: err?.toString() });
@@ -93,5 +98,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   setDownloadProgress: (progress) => {
     set({ downloadProgress: progress });
+  },
+
+  setDownloadError: (err) => {
+    set({ downloadError: err });
   },
 }));

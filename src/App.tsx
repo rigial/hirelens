@@ -17,20 +17,21 @@ import { CandidateAnalysisCompleteEvent } from './types/processing';
 export function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const { handleAnalysisComplete } = useCandidateStore();
-  const { setDownloadProgress, fetchModels } = useSettingsStore();
+  const { setDownloadProgress, setDownloadError, fetchModels } = useSettingsStore();
 
   useEffect(() => {
     // Check onboarding status from settings
     api.settings.getAll().then((settings) => {
       setOnboardingCompleted(settings.onboarding_completed === 'true');
     }).catch(() => {
-      setOnboardingCompleted(true);
+      setOnboardingCompleted(false);
     });
 
     // Tauri Event Listeners
     let unlistenAnalysis: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
     let unlistenComplete: (() => void) | undefined;
+    let unlistenError: (() => void) | undefined;
 
     listen<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
       handleAnalysisComplete(event.payload);
@@ -52,17 +53,28 @@ export function App() {
 
     listen<any>('model-download-complete', () => {
       setDownloadProgress(null);
+      setDownloadError(null);
       fetchModels();
     }).then((unlisten) => {
       unlistenComplete = unlisten;
+    });
+
+    listen<any>('model-download-error', (event) => {
+      const { model_id, error } = event.payload;
+      setDownloadProgress(null);
+      setDownloadError({ modelId: model_id, message: error || 'Model download failed' });
+      fetchModels();
+    }).then((unlisten) => {
+      unlistenError = unlisten;
     });
 
     return () => {
       if (unlistenAnalysis) unlistenAnalysis();
       if (unlistenProgress) unlistenProgress();
       if (unlistenComplete) unlistenComplete();
+      if (unlistenError) unlistenError();
     };
-  }, [handleAnalysisComplete, setDownloadProgress, fetchModels]);
+  }, [handleAnalysisComplete, setDownloadProgress, setDownloadError, fetchModels]);
 
   if (onboardingCompleted === null) {
     return (

@@ -87,6 +87,7 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
     }
   },
 
+
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => {
     // Trigger candidate list refresh
     get().fetchCandidates(event.job_id).catch(() => {});

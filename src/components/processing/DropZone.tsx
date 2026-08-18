@@ -18,6 +18,10 @@ export interface DropZoneProps {
 /**
  * Interactive drag-and-drop file upload zone for candidate resumes with automated
  * duplicate detection checking and confirmation before upload.
+ *
+ * @param props - The component props
+ * @param props.jobId - Target job ID where resumes will be uploaded
+ * @param props.onUploaded - Optional callback fired after resumes are successfully uploaded
  */
 export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -255,4 +259,3 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
     </div>
   );
 }
-

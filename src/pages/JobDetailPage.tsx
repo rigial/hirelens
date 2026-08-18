@@ -22,6 +22,11 @@ import { Button } from '../components/ui/Button';
 import { MarkdownView } from '../components/ui/MarkdownView';
 import { api } from '../lib/tauri';
 
+/**
+ * Displays job details, candidate processing status, and candidates for the current job opening.
+ *
+ * Provides controls for editing, archiving, re-scoring candidates, uploading resumes, and updating shortlist statuses.
+ */
 export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();

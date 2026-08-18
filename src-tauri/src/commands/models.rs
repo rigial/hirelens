@@ -52,7 +52,7 @@ pub async fn download_model(
         ).ok();
     }
 
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let res = perform_model_download(app_clone.clone(), models_dir.clone(), model_clone.clone(), cancel_flag).await;
         let db = state_db.lock().await;
 

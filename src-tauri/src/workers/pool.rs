@@ -27,7 +27,7 @@ impl WorkerPool {
             let conn_clone = Arc::clone(&conn);
             let llm_clone = Arc::clone(&llm);
 
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     let job_opt = {
                         let mut receiver = rx_clone.lock().await;
@@ -50,7 +50,6 @@ impl WorkerPool {
                             }
                         }
                         None => {
-                            // Channel closed
                             break;
                         }
                     }

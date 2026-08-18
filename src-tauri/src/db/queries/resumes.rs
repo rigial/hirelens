@@ -1,22 +1,35 @@
 use rusqlite::{Connection, Result, params};
 use serde::{Deserialize, Serialize};
 
+/// A resume record stored in SQLite representing an uploaded candidate resume.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Resume {
+    /// Unique UUID identifier for the resume record.
     pub id: String,
+    /// Associated candidate ID once parsed and created, if any.
     pub candidate_id: Option<String>,
+    /// Associated job opening UUID.
     pub job_id: String,
+    /// Original file name of the resume (e.g. `john_doe_resume.pdf`).
     pub file_name: String,
+    /// Stored local file path on disk.
     pub file_path: String,
+    /// File extension / type (`pdf`, `doc`, `docx`).
     pub file_type: String,
+    /// Size of the resume file in bytes.
     pub file_size: i64,
+    /// Current processing status (`pending`, `queued`, `extracting`, `analyzing`, `completed`, `failed`).
     pub status: String,
+    /// Error message if processing failed.
     pub error_message: Option<String>,
+    /// ISO-8601 timestamp when the resume was uploaded.
     pub uploaded_at: String,
+    /// ISO-8601 timestamp when processing completed or failed.
     pub processed_at: Option<String>,
 }
 
+/// Creates a new resume record with `pending` status in SQLite.
 pub fn create_resume(
     conn: &Connection,
     id: &str,
@@ -49,6 +62,7 @@ pub fn create_resume(
     })
 }
 
+/// Updates the processing status and optional error message of a resume.
 pub fn update_resume_status(
     conn: &Connection,
     resume_id: &str,
@@ -68,6 +82,7 @@ pub fn update_resume_status(
     Ok(())
 }
 
+/// Sets the raw extracted text content of a resume.
 pub fn set_resume_text(conn: &Connection, resume_id: &str, raw_text: &str) -> Result<()> {
     conn.execute(
         "UPDATE resumes SET raw_text = ?1 WHERE id = ?2",
@@ -76,6 +91,7 @@ pub fn set_resume_text(conn: &Connection, resume_id: &str, raw_text: &str) -> Re
     Ok(())
 }
 
+/// Links a resume to a parsed candidate record.
 pub fn set_resume_candidate(conn: &Connection, resume_id: &str, candidate_id: &str) -> Result<()> {
     conn.execute(
         "UPDATE resumes SET candidate_id = ?1 WHERE id = ?2",
@@ -84,6 +100,7 @@ pub fn set_resume_candidate(conn: &Connection, resume_id: &str, candidate_id: &s
     Ok(())
 }
 
+/// Retrieves a resume record by its unique ID.
 pub fn get_resume(conn: &Connection, resume_id: &str) -> Result<Resume> {
     let mut stmt = conn.prepare(
         "SELECT id, candidate_id, job_id, file_name, file_path, file_type, file_size, status, error_message, uploaded_at, processed_at
@@ -107,11 +124,15 @@ pub fn get_resume(conn: &Connection, resume_id: &str) -> Result<Resume> {
     })
 }
 
+/// Retrieves the raw extracted text content of a resume by ID.
 pub fn get_resume_raw_text(conn: &Connection, resume_id: &str) -> Result<Option<String>> {
     let mut stmt = conn.prepare("SELECT raw_text FROM resumes WHERE id = ?1")?;
     stmt.query_row(params![resume_id], |row| row.get(0))
 }
 
+/// Finds an existing resume in a specific job opening matching the exact file name and file size.
+///
+/// Returns the most recently uploaded matching resume, if any exists.
 pub fn find_resume_by_name_and_size(
     conn: &Connection,
     job_id: &str,

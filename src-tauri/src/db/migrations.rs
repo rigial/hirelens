@@ -115,7 +115,15 @@ CREATE TABLE IF NOT EXISTS embeddings (
   id           TEXT PRIMARY KEY,
   resume_id    TEXT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
   job_id       TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-  embedding    BLOB NOT NULL
+  embedding    BLOB NOT NULL,
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(resume_id, job_id)
+);
+
+CREATE TABLE IF NOT EXISTS job_embeddings (
+  job_id       TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  embedding    BLOB NOT NULL,
+  updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes
@@ -125,4 +133,6 @@ CREATE INDEX IF NOT EXISTS idx_analysis_job_id ON candidate_analysis(job_id);
 CREATE INDEX IF NOT EXISTS idx_analysis_score ON candidate_analysis(job_id, overall_score DESC);
 CREATE INDEX IF NOT EXISTS idx_queue_status ON processing_queue(status, queued_at);
 CREATE INDEX IF NOT EXISTS idx_shortlists_job_id ON shortlists(job_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_resume_id ON embeddings(resume_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_job_id ON embeddings(job_id);
 "#;

@@ -20,6 +20,8 @@ export const api = {
       invoke<void>('update_shortlist_status', { jobId, candidateId, status, notes: notes || null }),
     retry: (resumeId: string) => invoke<void>('retry_resume', { resumeId }),
     reanalyzeAll: (jobId: string) => invoke<void>('reanalyze_job_candidates', { jobId }),
+    searchSemantic: (jobId: string, query: string, limit?: number) =>
+      invoke<[string, number][]>('search_candidates_semantic', { jobId, query, limit: limit || null }),
   },
   resumes: {
     upload: (jobId: string, filePaths: string[]) =>

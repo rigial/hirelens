@@ -8,10 +8,11 @@ use crate::db::queries::resumes::{get_resume, update_resume_status, set_resume_t
 use crate::db::queries::candidates::upsert_candidate;
 use crate::db::queries::analysis::upsert_analysis;
 use crate::db::queries::queue::update_queue_status;
+use crate::db::queries::embeddings::{upsert_resume_embedding, upsert_job_embedding, get_job_embedding};
 use crate::llm::client::LlamaClient;
 use crate::processing::parser::extract_text_from_file;
 use crate::processing::matcher::{match_skills, match_experience};
-use crate::processing::embedder::compute_semantic_similarity;
+use crate::processing::embedder::{generate_embedding, compute_semantic_similarity_from_vectors};
 use crate::processing::ranker::compute_final_score;
 
 pub async fn run_processing_pipeline(
@@ -87,8 +88,32 @@ pub async fn run_processing_pipeline(
         cid
     };
 
-    // STEP 3 — Embedding / Semantic Relevance
-    let semantic_score = compute_semantic_similarity(&raw_text, &job.description);
+    // STEP 3 — Embedding / Semantic Relevance (Dense Vector & sqlite-vec Integration)
+    let semantic_score = {
+        // 1. Get or generate cached job description embedding (384d)
+        let job_vec = {
+            let db = conn.lock().await;
+            if let Ok(Some(cached_vec)) = get_job_embedding(&db, job_id) {
+                cached_vec
+            } else {
+                let generated_job_vec = generate_embedding(&job.description);
+                upsert_job_embedding(&db, job_id, &generated_job_vec).ok();
+                generated_job_vec
+            }
+        };
+
+        // 2. Generate resume dense embedding vector (384d)
+        let resume_vec = generate_embedding(&raw_text);
+
+        // 3. Persist resume embedding BLOB in embeddings table
+        {
+            let db = conn.lock().await;
+            upsert_resume_embedding(&db, resume_id, job_id, &resume_vec).ok();
+        }
+
+        // 4. Compute cosine similarity between resume and job vectors -> semantic_score
+        compute_semantic_similarity_from_vectors(&resume_vec, &job_vec)
+    };
 
     // STEP 4 — Deterministic Skill and Experience Scoring
     {

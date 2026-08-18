@@ -1,8 +1,25 @@
 use std::path::Path;
+use std::sync::Once;
 use rusqlite::{Connection, Result};
+use sqlite_vec::sqlite3_vec_init;
+use rusqlite::ffi::sqlite3_auto_extension;
 use crate::db::migrations::INITIAL_MIGRATION;
 
+static INIT_SQLITE_VEC: Once = Once::new();
+
+pub fn register_sqlite_vec_extension() {
+    INIT_SQLITE_VEC.call_once(|| {
+        unsafe {
+            sqlite3_auto_extension(Some(std::mem::transmute(
+                sqlite3_vec_init as *const (),
+            )));
+        }
+    });
+}
+
 pub fn init_db<P: AsRef<Path>>(db_path: P) -> Result<Connection> {
+    register_sqlite_vec_extension();
+
     if let Some(parent) = db_path.as_ref().parent() {
         std::fs::create_dir_all(parent).ok();
     }
@@ -67,3 +84,34 @@ pub fn init_db<P: AsRef<Path>>(db_path: P) -> Result<Connection> {
 
     Ok(conn)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sqlite_vec_extension_loaded() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!("test_vec_{}.db", uuid::Uuid::new_v4()));
+        let conn = init_db(&db_path).expect("Failed to initialize DB with sqlite-vec");
+
+        let version: String = conn.query_row("SELECT vec_version()", [], |r| r.get(0))
+            .expect("Failed to query vec_version()");
+        assert!(!version.is_empty(), "vec_version should return non-empty version string");
+
+        // Verify vec functions work (e.g. vec_distance_cosine)
+        let dist: f64 = conn.query_row(
+            "SELECT vec_distance_cosine(?, ?)",
+            rusqlite::params![
+                crate::db::queries::embeddings::vector_to_blob(&[1.0, 0.0, 0.0]),
+                crate::db::queries::embeddings::vector_to_blob(&[1.0, 0.0, 0.0]),
+            ],
+            |r| r.get(0),
+        ).unwrap_or(0.0);
+
+        assert!((dist - 0.0).abs() < 1e-4);
+
+        std::fs::remove_file(&db_path).ok();
+    }
+}
+

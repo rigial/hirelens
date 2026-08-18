@@ -9,11 +9,18 @@ export function useProcessing() {
     return resumes;
   };
 
+  const checkDuplicates = async (jobId: string, filePaths: string[]) => {
+    const duplicates = await api.resumes.checkDuplicates(jobId, filePaths);
+    return duplicates;
+  };
+
   return {
     activeUploads,
     addUpload,
     updateUpload,
     removeUpload,
     uploadFiles,
+    checkDuplicates,
   };
 }
+

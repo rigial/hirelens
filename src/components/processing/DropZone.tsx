@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { api } from '../../lib/tauri';
+import { DuplicateResumeInfo } from '../../types/processing';
 import { Button } from '../ui/Button';
+import { DuplicateUploadDialog } from './DuplicateUploadDialog';
 
 interface DropZoneProps {
   jobId: string;
@@ -12,6 +14,8 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateResumeInfo[]>([]);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -42,6 +46,46 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
     }
   };
 
+  const executeUpload = async (paths: string[]) => {
+    if (paths.length === 0) return;
+    setIsUploading(true);
+    try {
+      await api.resumes.upload(jobId, paths);
+      if (onUploaded) onUploaded();
+    } catch (err: any) {
+      setErrorMessage(err?.toString() || 'Failed to upload resumes');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const initiateUploadWithDuplicateCheck = async (filePaths: string[]) => {
+    if (filePaths.length === 0) return;
+    setIsUploading(true);
+    setErrorMessage(null);
+
+    try {
+      // Check if any files already exist for this job (same name and size)
+      const duplicateResults = await api.resumes.checkDuplicates(jobId, filePaths);
+      const hasDuplicates = duplicateResults.some((item) => item.isDuplicate);
+
+      if (hasDuplicates) {
+        setDuplicateCandidates(duplicateResults);
+        setIsDuplicateDialogOpen(true);
+        setIsUploading(false);
+        return;
+      }
+
+      // No duplicates detected, proceed directly with upload
+      await api.resumes.upload(jobId, filePaths);
+      if (onUploaded) onUploaded();
+    } catch (err: any) {
+      setErrorMessage(err?.toString() || 'Failed to process resumes');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const processFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
@@ -56,7 +100,6 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       return;
     }
 
-    setIsUploading(true);
     try {
       // In Tauri webview, path is available on File object in desktop mode, or we can use dialog plugin
       const filePaths: string[] = [];
@@ -69,8 +112,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       }
 
       if (filePaths.length > 0) {
-        await api.resumes.upload(jobId, filePaths);
-        if (onUploaded) onUploaded();
+        await initiateUploadWithDuplicateCheck(filePaths);
       } else {
         // Fallback for file picker when path is missing
         try {
@@ -81,8 +123,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
           });
           if (selected) {
             const paths = Array.isArray(selected) ? selected : [selected];
-            await api.resumes.upload(jobId, paths);
-            if (onUploaded) onUploaded();
+            await initiateUploadWithDuplicateCheck(paths);
           }
         } catch {
           setErrorMessage('Failed to resolve file paths. Please use the Browse button.');
@@ -90,8 +131,6 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       }
     } catch (err: any) {
       setErrorMessage(err?.toString() || 'Failed to upload resumes');
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -104,18 +143,36 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       });
       if (selected) {
         const paths = Array.isArray(selected) ? selected : [selected];
-        setIsUploading(true);
-        await api.resumes.upload(jobId, paths);
-        if (onUploaded) onUploaded();
+        await initiateUploadWithDuplicateCheck(paths);
       }
     } catch {
       // Fallback to HTML input
       if (fileInputRef.current) {
         fileInputRef.current.click();
       }
-    } finally {
-      setIsUploading(false);
     }
+  };
+
+  const handleConfirmUploadAll = async () => {
+    setIsDuplicateDialogOpen(false);
+    const allPaths = duplicateCandidates.map((d) => d.filePath);
+    await executeUpload(allPaths);
+  };
+
+  const handleConfirmSkipDuplicates = async () => {
+    setIsDuplicateDialogOpen(false);
+    const nonDuplicatePaths = duplicateCandidates
+      .filter((d) => !d.isDuplicate)
+      .map((d) => d.filePath);
+
+    if (nonDuplicatePaths.length > 0) {
+      await executeUpload(nonDuplicatePaths);
+    }
+  };
+
+  const handleCancelDuplicates = () => {
+    setIsDuplicateDialogOpen(false);
+    setDuplicateCandidates([]);
   };
 
   return (
@@ -177,6 +234,16 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
           <span>{errorMessage}</span>
         </div>
       )}
+
+      {/* Duplicate resume upload confirmation modal */}
+      <DuplicateUploadDialog
+        isOpen={isDuplicateDialogOpen}
+        duplicateItems={duplicateCandidates}
+        onConfirmUploadAll={handleConfirmUploadAll}
+        onConfirmSkipDuplicates={handleConfirmSkipDuplicates}
+        onCancel={handleCancelDuplicates}
+      />
     </div>
   );
 }
+

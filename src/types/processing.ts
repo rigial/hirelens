@@ -39,3 +39,14 @@ export interface ResumeProcessingFailedEvent {
   job_id: string;
   error: string;
 }
+
+export interface DuplicateResumeInfo {
+  filePath: string;
+  fileName: string;
+  fileSize: number;
+  isDuplicate: boolean;
+  existingResumeId?: string | null;
+  existingUploadedAt?: string | null;
+  existingStatus?: string | null;
+}
+

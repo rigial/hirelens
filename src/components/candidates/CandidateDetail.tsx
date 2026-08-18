@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openPath } from '@tauri-apps/plugin-opener';
 import {
   ArrowLeft,
   Mail,
@@ -12,6 +13,7 @@ import {
   Check,
   X,
   RotateCcw,
+  FileWarning,
 } from 'lucide-react';
 import { CandidateDetail as CandidateDetailType } from '../../types/candidate';
 import { ScoreBreakdown } from './ScoreBreakdown';
@@ -35,6 +37,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
   const analysis = candidate.analysis;
   const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
+  const isNoTextLayer = !candidate.rawText || candidate.rawText.trim().length === 0;
 
   const handleStatusChange = async (status: string) => {
     await onUpdateStatus(status, notes);
@@ -42,7 +45,6 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
   const handleOpenOriginalFile = async () => {
     try {
-      const { openPath } = await import('@tauri-apps/plugin-opener');
       await openPath(candidate.filePath);
     } catch {
       // Ignore
@@ -58,6 +60,20 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Candidate List
       </button>
+
+      {/* Scanned PDF Warning Banner */}
+      {isNoTextLayer && !analysis && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs shadow-xs">
+          <FileWarning className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="font-bold text-amber-900 text-sm">Scanned Document Warning: No Extractable Text Layer</h4>
+            <p className="leading-relaxed text-amber-800">
+              This document (<span className="font-medium">{candidate.fileName}</span>) contains no extractable text. It appears to be an image-only scan or flattened PDF.
+              Please apply OCR to the document or upload a text-based PDF or Word document (.docx) to enable automatic skill extraction and match scoring.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main Candidate Card Header */}
       <Card className="border-slate-200/90 shadow-sm">

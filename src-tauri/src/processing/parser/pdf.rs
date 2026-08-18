@@ -18,3 +18,15 @@ pub fn extract_pdf_text<P: AsRef<Path>>(path: P) -> Result<String, String> {
 
     Ok(extracted_text)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_nonexistent_pdf() {
+        let res = extract_pdf_text("/nonexistent/file/path.pdf");
+        assert!(res.is_err());
+    }
+}
+

@@ -12,6 +12,7 @@ interface CandidateStore {
   fetchCandidates: (jobId: string) => Promise<void>;
   fetchCandidateDetail: (candidateId: string, jobId: string) => Promise<void>;
   updateShortlistStatus: (jobId: string, candidateId: string, status: string, notes?: string) => Promise<void>;
+  retryResume: (jobId: string, resumeId: string) => Promise<void>;
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => void;
   fetchProcessingStatus: (jobId: string) => Promise<void>;
 }
@@ -29,7 +30,9 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
       const candidates = await api.candidates.list(jobId);
       set({ candidates, isLoading: false });
     } catch (err: any) {
-      set({ error: err?.toString() || 'Failed to fetch candidates', isLoading: false });
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidates';
+      set({ error: msg, isLoading: false });
+      throw err;
     }
   },
 
@@ -39,7 +42,9 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
       const detail = await api.candidates.detail(candidateId, jobId);
       set({ activeCandidateDetail: detail, isLoading: false });
     } catch (err: any) {
-      set({ error: err?.toString() || 'Failed to fetch candidate detail', isLoading: false });
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidate detail';
+      set({ error: msg, isLoading: false });
+      throw err;
     }
   },
 
@@ -62,22 +67,40 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
             : state.activeCandidateDetail,
       }));
     } catch (err: any) {
-      set({ error: err?.toString() || 'Failed to update shortlist status' });
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update shortlist status';
+      set({ error: msg });
+      throw err;
+    }
+  },
+
+  retryResume: async (jobId: string, resumeId: string) => {
+    try {
+      await api.candidates.retry(resumeId);
+      await Promise.all([
+        get().fetchCandidates(jobId),
+        get().fetchProcessingStatus(jobId),
+      ]);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to retry processing resume';
+      set({ error: msg });
+      throw err;
     }
   },
 
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => {
     // Trigger candidate list refresh
-    get().fetchCandidates(event.job_id);
-    get().fetchProcessingStatus(event.job_id);
+    get().fetchCandidates(event.job_id).catch(() => {});
+    get().fetchProcessingStatus(event.job_id).catch(() => {});
   },
 
   fetchProcessingStatus: async (jobId: string) => {
     try {
       const status = await api.resumes.getStatus(jobId);
       set({ processingStatus: status });
-    } catch {
-      // Ignore
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch processing status';
+      console.error('Failed to fetch processing status:', msg);
+      throw err;
     }
   },
 }));

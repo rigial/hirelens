@@ -38,6 +38,8 @@ pub struct CandidateDetail {
     pub phone: Option<String>,
     pub location: Option<String>,
     pub resume_id: String,
+    pub resume_status: String,
+    pub resume_error: Option<String>,
     pub file_name: String,
     pub file_path: String,
     pub raw_text: Option<String>,
@@ -179,6 +181,8 @@ pub fn get_candidate_detail(conn: &Connection, candidate_id: &str, job_id: &str)
             c.phone,
             c.location,
             r.id AS resume_id,
+            r.status AS resume_status,
+            r.error_message AS resume_error,
             r.file_name,
             r.file_path,
             r.raw_text,
@@ -196,23 +200,23 @@ pub fn get_candidate_detail(conn: &Connection, candidate_id: &str, job_id: &str)
     )?;
 
     stmt.query_row(params![job_id, candidate_id], |row| {
-        let analysis_id: Option<String> = row.get(11)?;
+        let analysis_id: Option<String> = row.get(13)?;
         let analysis = if let Some(aid) = analysis_id {
-            let overall: f64 = row.get(12)?;
-            let skills: f64 = row.get(13)?;
-            let experience: f64 = row.get(14)?;
-            let semantic: f64 = row.get(15)?;
-            let llm: f64 = row.get(16)?;
-            let rank: i64 = row.get(17)?;
-            let ext_skills_str: Option<String> = row.get(18)?;
-            let matched_skills_str: Option<String> = row.get(19)?;
-            let missing_skills_str: Option<String> = row.get(20)?;
-            let exp_years: Option<f64> = row.get(21)?;
-            let edu_str: Option<String> = row.get(22)?;
-            let roles_str: Option<String> = row.get(23)?;
-            let ai_sum: Option<String> = row.get(24)?;
-            let strengths_str: Option<String> = row.get(25)?;
-            let concerns_str: Option<String> = row.get(26)?;
+            let overall: f64 = row.get(14)?;
+            let skills: f64 = row.get(15)?;
+            let experience: f64 = row.get(16)?;
+            let semantic: f64 = row.get(17)?;
+            let llm: f64 = row.get(18)?;
+            let rank: i64 = row.get(19)?;
+            let ext_skills_str: Option<String> = row.get(20)?;
+            let matched_skills_str: Option<String> = row.get(21)?;
+            let missing_skills_str: Option<String> = row.get(22)?;
+            let exp_years: Option<f64> = row.get(23)?;
+            let edu_str: Option<String> = row.get(24)?;
+            let roles_str: Option<String> = row.get(25)?;
+            let ai_sum: Option<String> = row.get(26)?;
+            let strengths_str: Option<String> = row.get(27)?;
+            let concerns_str: Option<String> = row.get(28)?;
 
             Some(CandidateAnalysis {
                 id: aid,
@@ -248,11 +252,13 @@ pub fn get_candidate_detail(conn: &Connection, candidate_id: &str, job_id: &str)
             phone: row.get(3)?,
             location: row.get(4)?,
             resume_id: row.get(5)?,
-            file_name: row.get(6)?,
-            file_path: row.get(7)?,
-            raw_text: row.get(8)?,
-            shortlist_status: row.get::<_, Option<String>>(9)?.unwrap_or_else(|| "pending".to_string()),
-            shortlist_notes: row.get(10)?,
+            resume_status: row.get(6)?,
+            resume_error: row.get(7)?,
+            file_name: row.get(8)?,
+            file_path: row.get(9)?,
+            raw_text: row.get(10)?,
+            shortlist_status: row.get::<_, Option<String>>(11)?.unwrap_or_else(|| "pending".to_string()),
+            shortlist_notes: row.get(12)?,
             analysis,
         })
     })

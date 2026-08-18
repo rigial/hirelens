@@ -19,6 +19,7 @@ import { CandidateList } from '../components/candidates/CandidateList';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { MarkdownView } from '../components/ui/MarkdownView';
 import { api } from '../lib/tauri';
 
 export function JobDetailPage() {
@@ -170,13 +171,16 @@ export function JobDetailPage() {
                   <span>Role Description</span>
                   {descExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 </button>
-                <div
-                  className={`text-xs text-slate-600 leading-relaxed whitespace-pre-wrap ${
-                    descExpanded ? '' : 'line-clamp-3'
-                  }`}
-                >
-                  {activeJob.description}
-                </div>
+                {descExpanded ? (
+                  <MarkdownView
+                    content={activeJob.description}
+                    className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-lg text-xs"
+                  />
+                ) : (
+                  <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                    {activeJob.description}
+                  </div>
+                )}
               </div>
 
               {/* Re-analyze Button */}

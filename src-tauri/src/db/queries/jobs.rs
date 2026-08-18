@@ -203,6 +203,7 @@ pub fn update_job(conn: &Connection, job_id: &str, payload: UpdateJobPayload) ->
     )?;
 
     conn.execute("DELETE FROM job_skills WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM job_embeddings WHERE job_id = ?1", params![job_id]).ok();
 
     let mut saved_skills = Vec::new();
     for s in payload.skills {

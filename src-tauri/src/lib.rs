@@ -108,6 +108,7 @@ pub fn run() {
             commands::candidates::update_shortlist_status,
             commands::candidates::retry_resume,
             commands::candidates::reanalyze_job_candidates,
+            commands::candidates::search_candidates_semantic,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

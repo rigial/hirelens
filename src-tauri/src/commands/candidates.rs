@@ -97,3 +97,21 @@ pub async fn reanalyze_job_candidates(
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn search_candidates_semantic(
+    state: State<'_, AppState>,
+    job_id: String,
+    query: String,
+    limit: Option<usize>,
+) -> Result<Vec<(String, f64)>, String> {
+    let query_vec = crate::processing::embedder::generate_embedding(&query);
+    let db = state.db.lock().await;
+    crate::db::queries::embeddings::find_similar_resumes_sqlite_vec(
+        &db,
+        &job_id,
+        &query_vec,
+        limit.unwrap_or(10),
+    ).map_err(|e| e.to_string())
+}
+

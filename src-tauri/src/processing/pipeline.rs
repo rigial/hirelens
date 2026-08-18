@@ -70,7 +70,7 @@ pub async fn run_processing_pipeline(
 
     // STEP 2 — LLM Structured Extraction
     let extracted_cand = {
-        let client = llm.lock().await;
+        let mut client = llm.lock().await;
         client.extract_candidate(&raw_text).await
     };
 
@@ -107,7 +107,7 @@ pub async fn run_processing_pipeline(
     // STEP 5 — LLM Qualitative Analysis
     let job_skills_names: Vec<String> = job.skills.iter().map(|s| s.skill.clone()).collect();
     let qualitative = {
-        let client = llm.lock().await;
+        let mut client = llm.lock().await;
         client.analyze_candidate(
             &extracted_cand,
             &job.title,

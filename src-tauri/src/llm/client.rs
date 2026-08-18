@@ -1,6 +1,14 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use crate::db::queries::analysis::{Education, WorkExperience};
+use crate::llm::engine::{GenerationConfig, GgufEngine};
+use crate::llm::parser::{
+    merge_candidate_with_heuristic, parse_candidate_json, parse_qualitative_analysis,
+};
+use crate::llm::prompts::{
+    build_analysis_prompt, build_analysis_retry_prompt, build_extraction_prompt,
+    build_extraction_retry_prompt,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ExtractedCandidate {
@@ -28,36 +36,174 @@ pub struct QualitativeAnalysis {
 
 pub struct LlamaClient {
     pub active_model_path: Option<String>,
+    engine: Option<GgufEngine>,
 }
 
 impl LlamaClient {
     pub fn new() -> Self {
         Self {
             active_model_path: None,
+            engine: None,
         }
+    }
+
+    pub fn is_model_loaded(&self) -> bool {
+        self.engine.is_some()
     }
 
     pub fn set_active_model(&mut self, path: String) {
-        self.active_model_path = Some(path);
-    }
-
-    pub async fn extract_candidate(&self, raw_text: &str) -> ExtractedCandidate {
-        let fallback = self.heuristic_extract(raw_text);
-        let mut extracted = fallback;
-
-        if extracted.name.trim().is_empty() {
-            let lines: Vec<&str> = raw_text.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
-            if let Some(first_line) = lines.first() {
-                extracted.name = first_line.to_string();
-            } else {
-                extracted.name = "Candidate".to_string();
+        if let Some(ref current_path) = self.active_model_path {
+            if current_path == &path && self.engine.is_some() {
+                return;
             }
         }
 
-        extracted
+        if !std::path::Path::new(&path).exists() {
+            eprintln!("Model file not found at: {}", path);
+            self.active_model_path = Some(path);
+            self.engine = None;
+            return;
+        }
+
+        println!("Loading on-device GGUF model from: {}", path);
+        match GgufEngine::load(&path) {
+            Ok(eng) => {
+                println!("Successfully loaded GGUF model: {}", path);
+                self.engine = Some(eng);
+                self.active_model_path = Some(path);
+            }
+            Err(err) => {
+                eprintln!("Failed to load GGUF model {}: {}", path, err);
+                self.active_model_path = Some(path);
+                self.engine = None;
+            }
+        }
+    }
+
+    pub fn unload_active_model(&mut self) {
+        self.engine = None;
+        self.active_model_path = None;
+    }
+
+    pub async fn extract_candidate(&mut self, raw_text: &str) -> ExtractedCandidate {
+        let mut fallback = self.heuristic_extract(raw_text);
+
+        if fallback.name.trim().is_empty() {
+            let lines: Vec<&str> = raw_text.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+            if let Some(first_line) = lines.first() {
+                fallback.name = first_line.to_string();
+            } else {
+                fallback.name = "Candidate".to_string();
+            }
+        }
+
+        if let Some(ref mut engine) = self.engine {
+            let prompt = build_extraction_prompt(raw_text);
+            let config = GenerationConfig {
+                temperature: 0.1,
+                top_p: 0.9,
+                max_tokens: 1024,
+                repeat_penalty: 1.1,
+                repeat_last_n: 64,
+            };
+
+            let inference_result = engine.generate(&prompt, &config);
+            match inference_result {
+                Ok(raw_output) => {
+                    let parse_result = parse_candidate_json(&raw_output);
+                    match parse_result {
+                        Ok(mut candidate) => {
+                            merge_candidate_with_heuristic(&mut candidate, &fallback);
+                            return candidate;
+                        }
+                        Err(parse_err) => {
+                            eprintln!("Initial LLM JSON parsing failed: {}. Retrying with schema feedback...", parse_err);
+                            let retry_prompt = build_extraction_retry_prompt(&raw_output, raw_text);
+                            if let Ok(retry_output) = engine.generate(&retry_prompt, &config) {
+                                if let Ok(mut retry_cand) = parse_candidate_json(&retry_output) {
+                                    merge_candidate_with_heuristic(&mut retry_cand, &fallback);
+                                    return retry_cand;
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("GGUF candidate extraction generation failed: {}. Falling back to heuristic extractor.", err);
+                }
+            }
+        }
+
+        fallback
     }
 
     pub async fn analyze_candidate(
+        &mut self,
+        candidate: &ExtractedCandidate,
+        job_title: &str,
+        job_skills: &[String],
+        experience_required: Option<f64>,
+        job_desc: &str,
+        deterministic_score: f64,
+    ) -> QualitativeAnalysis {
+        let fallback = self.heuristic_analyze(
+            candidate,
+            job_title,
+            job_skills,
+            experience_required,
+            job_desc,
+            deterministic_score,
+        );
+
+        if let Some(ref mut engine) = self.engine {
+            let prompt = build_analysis_prompt(
+                job_title,
+                job_skills,
+                experience_required,
+                job_desc,
+                &candidate.name,
+                &candidate.skills,
+                candidate.experience_years,
+                &candidate.education,
+                &candidate.work_experience,
+                deterministic_score,
+            );
+
+            let config = GenerationConfig {
+                temperature: 0.2,
+                top_p: 0.9,
+                max_tokens: 512,
+                repeat_penalty: 1.15,
+                repeat_last_n: 64,
+            };
+
+            let inference_result = engine.generate(&prompt, &config);
+            match inference_result {
+                Ok(raw_output) => {
+                    let parse_result = parse_qualitative_analysis(&raw_output, deterministic_score);
+                    match parse_result {
+                        Ok(analysis) => return analysis,
+                        Err(parse_err) => {
+                            eprintln!("Initial LLM analysis JSON parsing failed: {}. Retrying...", parse_err);
+                            let retry_prompt = build_analysis_retry_prompt(&raw_output);
+                            if let Ok(retry_output) = engine.generate(&retry_prompt, &config) {
+                                if let Ok(retry_analysis) = parse_qualitative_analysis(&retry_output, deterministic_score) {
+                                    return retry_analysis;
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("GGUF qualitative analysis generation failed: {}. Falling back to rule-based analysis.", err);
+                }
+            }
+        }
+
+        fallback
+    }
+
+    pub fn heuristic_analyze(
         &self,
         candidate: &ExtractedCandidate,
         job_title: &str,
@@ -117,7 +263,7 @@ impl LlamaClient {
         }
     }
 
-    fn heuristic_extract(&self, text: &str) -> ExtractedCandidate {
+    pub fn heuristic_extract(&self, text: &str) -> ExtractedCandidate {
         let mut name = String::new();
         let mut email = None;
         let mut phone = None;
@@ -212,5 +358,74 @@ impl LlamaClient {
             certifications: Vec::new(),
             languages: Vec::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_llama_client_fallback_extraction() {
+        let mut client = LlamaClient::new();
+        assert!(!client.is_model_loaded());
+
+        let resume_text = r#"
+John Doe
+johndoe@example.com
++1 (555) 123-4567
+
+Summary:
+Experienced Software Engineer with 7 years of experience in backend development.
+
+Skills:
+Rust, Python, Docker, PostgreSQL, AWS, Git
+
+Education:
+Bachelor of Science in Computer Science, Stanford University
+        "#;
+
+        let candidate = client.extract_candidate(resume_text).await;
+        assert_eq!(candidate.name, "John Doe");
+        assert_eq!(candidate.email, Some("johndoe@example.com".to_string()));
+        assert!(candidate.skills.contains(&"Rust".to_string()));
+        assert!(candidate.skills.contains(&"Docker".to_string()));
+        assert_eq!(candidate.experience_years, Some(7.0));
+        assert!(!candidate.education.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_llama_client_fallback_analysis() {
+        let mut client = LlamaClient::new();
+        let candidate = ExtractedCandidate {
+            name: "Jane Smith".to_string(),
+            email: Some("jane@example.com".to_string()),
+            phone: None,
+            location: None,
+            skills: vec!["Rust".to_string(), "PostgreSQL".to_string(), "Docker".to_string()],
+            experience_years: Some(5.0),
+            education: vec![Education {
+                degree: "BS Computer Science".to_string(),
+                institution: "MIT".to_string(),
+                year: Some("2019".to_string()),
+            }],
+            work_experience: vec![],
+            certifications: vec![],
+            languages: vec![],
+        };
+
+        let job_skills = vec!["Rust".to_string(), "PostgreSQL".to_string(), "Kubernetes".to_string()];
+        let analysis = client.analyze_candidate(
+            &candidate,
+            "Senior Rust Engineer",
+            &job_skills,
+            Some(4.0),
+            "We are looking for a Senior Rust Engineer...",
+            80.0,
+        ).await;
+
+        assert!(analysis.llm_score >= 10.0 && analysis.llm_score <= 98.0);
+        assert!(!analysis.summary.is_empty());
+        assert!(!analysis.strengths.is_empty());
     }
 }

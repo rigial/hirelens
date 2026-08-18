@@ -113,9 +113,11 @@ pub async fn set_active_model(
         path
     };
 
+    let mut llm = state.llm.lock().await;
     if let Some(path) = model_path {
-        let mut llm = state.llm.lock().await;
         llm.set_active_model(path);
+    } else {
+        llm.unload_active_model();
     }
 
     Ok(())

@@ -37,7 +37,20 @@ pub fn run() {
             let sys_info = detect_system_info();
             let concurrency = if sys_info.has_gpu { 4 } else { 2 };
 
-            let llm = Arc::new(Mutex::new(LlamaClient::new()));
+            let mut llama_client = LlamaClient::new();
+            {
+                let db = conn_arc.blocking_lock();
+                let active_path: Option<String> = db.query_row(
+                    "SELECT file_path FROM models WHERE is_active = 1 AND status = 'downloaded' AND file_path IS NOT NULL LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                ).ok();
+                if let Some(path) = active_path {
+                    llama_client.set_active_model(path);
+                }
+            }
+
+            let llm = Arc::new(Mutex::new(llama_client));
             let worker_pool = Arc::new(WorkerPool::new(
                 app.handle().clone(),
                 Arc::clone(&conn_arc),

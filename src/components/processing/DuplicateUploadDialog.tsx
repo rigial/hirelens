@@ -1,14 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AlertTriangle, FileText, X, CheckCircle2, ArrowRight } from 'lucide-react';
 import { DuplicateResumeInfo } from '../../types/processing';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 
-interface DuplicateUploadDialogProps {
+/**
+ * Props for the DuplicateUploadDialog component.
+ */
+export interface DuplicateUploadDialogProps {
+  /** Whether the duplicate confirmation modal is open. */
   isOpen: boolean;
+  /** List of resume files evaluated for duplicate detection. */
   duplicateItems: DuplicateResumeInfo[];
+  /** Callback when the user confirms re-uploading all files including duplicates. */
   onConfirmUploadAll: () => void;
+  /** Callback when the user confirms uploading only non-duplicate files. */
   onConfirmSkipDuplicates: () => void;
+  /** Callback when the user cancels the upload action. */
   onCancel: () => void;
 }
 
@@ -31,7 +39,7 @@ function formatBytes(bytes: number, decimals = 1): string {
 /**
  * Formats an upload date for display.
  *
- * @param dateStr - The date string to format; missing values are displayed as “Recently”
+ * @param dateStr - The date string to format; missing values are displayed as "Recently"
  * @returns The formatted date, or the original string if formatting fails
  */
 function formatDate(dateStr?: string | null): string {
@@ -50,15 +58,17 @@ function formatDate(dateStr?: string | null): string {
 }
 
 /**
- * Displays a modal for reviewing duplicate and new resume uploads.
+ * Modal dialog presented to users when uploading resumes that duplicate existing files
+ * previously uploaded for the current job opening. Provides options to re-upload all or skip duplicates.
  *
  * Pressing Escape or canceling the dialog invokes `onCancel`.
  *
- * @param isOpen - Whether the dialog is visible
- * @param duplicateItems - Uploaded files classified as duplicates or new files
- * @param onConfirmUploadAll - Handles re-uploading all listed files
- * @param onConfirmSkipDuplicates - Handles uploading only new files
- * @param onCancel - Handles dismissing the dialog
+ * @param props - The component props
+ * @param props.isOpen - Whether the dialog is visible
+ * @param props.duplicateItems - Uploaded files classified as duplicates or new files
+ * @param props.onConfirmUploadAll - Handles re-uploading all listed files
+ * @param props.onConfirmSkipDuplicates - Handles uploading only new files
+ * @param props.onCancel - Handles dismissing the dialog
  */
 export function DuplicateUploadDialog({
   isOpen,
@@ -67,16 +77,70 @@ export function DuplicateUploadDialog({
   onConfirmSkipDuplicates,
   onCancel,
 }: DuplicateUploadDialogProps) {
-  // Handle ESC key press
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Focus management: Trap focus inside modal, initial focus, and restore focus on dismiss
   useEffect(() => {
     if (!isOpen) return;
+
+    // Save currently focused element to restore when dialog closes
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+
+    // Query focusable elements
+    const getFocusableElements = () => {
+      if (!dialogRef.current) return [];
+      return Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    };
+
+    // Focus the first actionable button or close button on open
+    const focusable = getFocusableElements();
+    if (focusable.length > 0) {
+      // Focus on the first element (e.g. Close button or Cancel)
+      focusable[0].focus();
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
         onCancel();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      // Restore focus to previous element when modal is dismissed
+      if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+        previousActiveElementRef.current.focus();
+      }
+    };
   }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
@@ -87,6 +151,7 @@ export function DuplicateUploadDialog({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"

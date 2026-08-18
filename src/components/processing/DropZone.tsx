@@ -5,16 +5,23 @@ import { DuplicateResumeInfo } from '../../types/processing';
 import { Button } from '../ui/Button';
 import { DuplicateUploadDialog } from './DuplicateUploadDialog';
 
-interface DropZoneProps {
+/**
+ * Props for the DropZone upload area component.
+ */
+export interface DropZoneProps {
+  /** Target job ID where resumes will be uploaded. */
   jobId: string;
+  /** Callback fired after resumes are successfully uploaded and enqueued. */
   onUploaded?: () => void;
 }
 
 /**
- * Provides a drag-and-drop and file-picker interface for uploading resumes to a job.
+ * Interactive drag-and-drop file upload zone for candidate resumes with automated
+ * duplicate detection checking and confirmation before upload.
  *
- * @param jobId - The job identifier associated with the resumes
- * @param onUploaded - Optional callback invoked after a successful upload
+ * @param props - The component props
+ * @param props.jobId - Target job ID where resumes will be uploaded
+ * @param props.onUploaded - Optional callback fired after resumes are successfully uploaded
  */
 export function DropZone({ jobId, onUploaded }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -252,4 +259,3 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
     </div>
   );
 }
-

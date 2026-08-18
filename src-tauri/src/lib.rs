@@ -23,7 +23,7 @@ use db::queries::queue::reset_interrupted_queue;
 /// # Examples
 ///
 /// ```no_run
-/// run();
+/// hirelens_lib::run();
 /// ```
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

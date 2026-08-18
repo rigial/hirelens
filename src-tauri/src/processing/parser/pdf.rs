@@ -17,6 +17,7 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```
+/// use hirelens_lib::processing::parser::pdf::extract_pdf_text;
 /// let result = extract_pdf_text("missing.pdf");
 /// assert!(result.is_err());
 /// ```

@@ -44,7 +44,14 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
   const analysis = candidate.analysis;
   const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
-  const isNoTextLayer = !candidate.rawText || candidate.rawText.trim().length === 0;
+  const isScannedDoc = Boolean(
+    candidate.resumeError && (
+      candidate.resumeError.toLowerCase().includes('scanned') ||
+      candidate.resumeError.toLowerCase().includes('no extractable text') ||
+      candidate.resumeError.toLowerCase().includes('text layer')
+    )
+  );
+  const isOtherError = Boolean(candidate.resumeError && !isScannedDoc);
 
   const handleStatusChange = async (status: string) => {
     await onUpdateStatus(status, notes);
@@ -69,7 +76,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
       </button>
 
       {/* Scanned PDF Warning Banner */}
-      {isNoTextLayer && !analysis && (
+      {isScannedDoc && !analysis && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs shadow-xs">
           <FileWarning className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
@@ -77,6 +84,19 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
             <p className="leading-relaxed text-amber-800">
               This document (<span className="font-medium">{candidate.fileName}</span>) contains no extractable text. It appears to be an image-only scan or flattened PDF.
               Please apply OCR to the document or upload a text-based PDF or Word document (.docx) to enable automatic skill extraction and match scoring.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* General Processing Error Banner */}
+      {isOtherError && !analysis && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs shadow-xs">
+          <FileWarning className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="font-bold text-rose-900 text-sm">Document Processing Error</h4>
+            <p className="leading-relaxed text-rose-800">
+              {candidate.resumeError}
             </p>
           </div>
         </div>

@@ -1,3 +1,5 @@
+use crate::db::queries::analysis::{Education, WorkExperience};
+
 pub const EXTRACTION_PROMPT: &str = r#"You are a precise resume parser. Extract information from the resume text below.
 
 Return ONLY a valid JSON object — no explanation, no markdown, no extra text.
@@ -50,3 +52,169 @@ Return ONLY valid JSON — no markdown, no explanation:
   "strengths": ["string (up to 4 items)"],
   "concerns": ["string (up to 3 items, or empty array if none)"]
 }"#;
+
+pub const EXTRACTION_SCHEMA_HINT: &str = r#"{
+  "name": "Full Name",
+  "email": "email@example.com",
+  "phone": "+1234567890",
+  "location": "City, Country",
+  "skills": ["Skill 1", "Skill 2"],
+  "experience_years": 5.0,
+  "education": [{"degree": "Degree", "institution": "University", "year": "2020"}],
+  "work_experience": [{"title": "Role", "company": "Company", "duration": "2020-Present"}]
+}"#;
+
+pub const ANALYSIS_SCHEMA_HINT: &str = r#"{
+  "llm_score": 85.0,
+  "summary": "Brief 2-3 sentence assessment.",
+  "strengths": ["Strength 1", "Strength 2"],
+  "concerns": ["Concern 1"]
+}"#;
+
+pub fn build_extraction_prompt(raw_text: &str) -> String {
+    // Truncate raw text to 6000 chars to avoid exceeding model context limits
+    let truncated_text: String = raw_text.chars().take(6000).collect();
+    EXTRACTION_PROMPT.replace("{raw_text}", &truncated_text)
+}
+
+pub fn build_extraction_retry_prompt(bad_output: &str, raw_text: &str) -> String {
+    let truncated_text: String = raw_text.chars().take(4000).collect();
+    let truncated_bad: String = bad_output.chars().take(1000).collect();
+    format!(
+        "Your previous response was not valid JSON:\n{}\n\nRe-parse the resume below and return ONLY valid JSON matching this schema:\n{}\n\nResume text:\n{}",
+        truncated_bad, EXTRACTION_SCHEMA_HINT, truncated_text
+    )
+}
+
+pub fn build_analysis_prompt(
+    job_title: &str,
+    required_skills: &[String],
+    experience_required: Option<f64>,
+    job_description: &str,
+    candidate_name: &str,
+    candidate_skills: &[String],
+    candidate_experience: Option<f64>,
+    candidate_education: &[Education],
+    candidate_roles: &[WorkExperience],
+    deterministic_score: f64,
+) -> String {
+    let req_skills_str = if required_skills.is_empty() {
+        "None specified".to_string()
+    } else {
+        required_skills.join(", ")
+    };
+
+    let exp_req_str = experience_required
+        .map(|e| format!("{:.1}", e))
+        .unwrap_or_else(|| "Not specified".to_string());
+
+    let job_desc_summary: String = job_description.chars().take(500).collect();
+
+    let cand_skills_str = if candidate_skills.is_empty() {
+        "None extracted".to_string()
+    } else {
+        candidate_skills.join(", ")
+    };
+
+    let cand_exp_str = candidate_experience
+        .map(|e| format!("{:.1}", e))
+        .unwrap_or_else(|| "Not specified".to_string());
+
+    let cand_edu_str = if candidate_education.is_empty() {
+        "None listed".to_string()
+    } else {
+        candidate_education
+            .iter()
+            .map(|e| format!("{} ({})", e.degree, e.institution))
+            .collect::<Vec<_>>()
+            .join("; ")
+    };
+
+    let cand_roles_str = if candidate_roles.is_empty() {
+        "None listed".to_string()
+    } else {
+        candidate_roles
+            .iter()
+            .map(|r| format!("{} at {}", r.title, r.company))
+            .collect::<Vec<_>>()
+            .join("; ")
+    };
+
+    ANALYSIS_PROMPT
+        .replace("{job_title}", job_title)
+        .replace("{required_skills}", &req_skills_str)
+        .replace("{experience_required}", &exp_req_str)
+        .replace("{job_description_first_500_chars}", &job_desc_summary)
+        .replace("{candidate_name}", candidate_name)
+        .replace("{candidate_skills}", &cand_skills_str)
+        .replace("{candidate_experience}", &cand_exp_str)
+        .replace("{candidate_education}", &cand_edu_str)
+        .replace("{candidate_roles}", &cand_roles_str)
+        .replace("{deterministic_score}", &format!("{:.1}", deterministic_score))
+}
+
+pub fn build_analysis_retry_prompt(bad_output: &str) -> String {
+    let truncated_bad: String = bad_output.chars().take(1000).collect();
+    format!(
+        "Your previous response was not valid JSON:\n{}\n\nPlease return ONLY valid JSON matching this exact structure:\n{}",
+        truncated_bad, ANALYSIS_SCHEMA_HINT
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_extraction_prompt() {
+        let resume_text = "Jane Doe\nRust Developer with 5 years experience.";
+        let prompt = build_extraction_prompt(resume_text);
+        assert!(prompt.contains("Jane Doe"));
+        assert!(prompt.contains("Rust Developer"));
+        assert!(prompt.contains("JSON schema"));
+    }
+
+    #[test]
+    fn test_build_analysis_prompt() {
+        let prompt = build_analysis_prompt(
+            "Rust Backend Engineer",
+            &["Rust".to_string(), "PostgreSQL".to_string()],
+            Some(4.0),
+            "Building high performance microservices.",
+            "Alex Smith",
+            &["Rust".to_string(), "gRPC".to_string()],
+            Some(5.0),
+            &[Education {
+                degree: "BS CS".to_string(),
+                institution: "Stanford".to_string(),
+                year: Some("2019".to_string()),
+            }],
+            &[WorkExperience {
+                title: "Software Engineer".to_string(),
+                company: "Tech Co".to_string(),
+                duration: Some("2019-2024".to_string()),
+            }],
+            85.0,
+        );
+
+        assert!(prompt.contains("Job Title: Rust Backend Engineer"));
+        assert!(prompt.contains("Required Skills: Rust, PostgreSQL"));
+        assert!(prompt.contains("Experience Required: 4.0 years"));
+        assert!(prompt.contains("Candidate Name: Alex Smith"));
+        assert!(prompt.contains("Candidate Skills: Rust, gRPC"));
+        assert!(prompt.contains("BS CS (Stanford)"));
+        assert!(prompt.contains("Software Engineer at Tech Co"));
+        assert!(prompt.contains("Deterministic Match Score: 85.0/100"));
+    }
+
+    #[test]
+    fn test_build_retry_prompts() {
+        let ext_retry = build_extraction_retry_prompt("{ invalid json }", "Sample Resume");
+        assert!(ext_retry.contains("{ invalid json }"));
+        assert!(ext_retry.contains("Sample Resume"));
+
+        let ana_retry = build_analysis_retry_prompt("Malformed response");
+        assert!(ana_retry.contains("Malformed response"));
+        assert!(ana_retry.contains("llm_score"));
+    }
+}

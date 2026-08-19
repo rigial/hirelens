@@ -14,9 +14,7 @@ export function Sidebar() {
     <aside className="w-64 border-r border-slate-200/80 bg-slate-50/60 flex flex-col shrink-0 h-screen sticky top-0">
       {/* Brand Header */}
       <div className="h-16 px-6 flex items-center gap-3 border-b border-slate-200/60">
-        <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200">
-          <Sparkles className="h-5 w-5" />
-        </div>
+        <img src="/app-icon.png" alt={APP_NAME} className="h-9 w-9 rounded-xl shadow-xs object-cover" />
         <div>
           <h1 className="font-bold text-slate-900 text-base tracking-tight">{APP_NAME}</h1>
           <p className="text-[11px] text-slate-500 font-medium leading-none">Privacy-First AI</p>

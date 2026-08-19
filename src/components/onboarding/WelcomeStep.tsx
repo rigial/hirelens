@@ -29,9 +29,11 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
   return (
     <div className="max-w-2xl mx-auto space-y-8 text-center py-6">
       <div className="space-y-3">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
-          <ShieldCheck className="h-8 w-8" />
-        </div>
+        <img
+          src="/app-icon.png"
+          alt={APP_NAME}
+          className="inline-flex h-20 w-20 rounded-2xl shadow-xl shadow-indigo-100 object-cover mx-auto mb-2"
+        />
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">
           Welcome to {APP_NAME}
         </h1>

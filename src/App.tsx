@@ -19,6 +19,7 @@ interface ModelDownloadProgressPayload {
   downloaded_bytes: number;
   total_bytes: number;
   speed_bps: number;
+  eta_seconds?: number;
 }
 
 interface ModelDownloadCompletePayload {
@@ -58,12 +59,13 @@ export function App() {
     });
 
     listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
-      const { model_id, downloaded_bytes, total_bytes, speed_bps } = event.payload;
+      const { model_id, downloaded_bytes, total_bytes, speed_bps, eta_seconds } = event.payload;
       setDownloadProgress({
         modelId: model_id,
         downloaded: downloaded_bytes,
         total: total_bytes,
         speedBps: speed_bps,
+        etaSeconds: eta_seconds,
       });
     }).then((unlisten) => {
       unlistenProgress = unlisten;

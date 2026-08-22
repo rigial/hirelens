@@ -229,3 +229,94 @@ pub fn archive_job(conn: &Connection, job_id: &str) -> Result<()> {
     )?;
     Ok(())
 }
+
+/// Deletes a job and all associated database records (skills, resumes, analysis, embeddings, queue).
+/// Returns all deleted resume file paths so physical files can be removed from disk.
+pub fn delete_job_db(conn: &Connection, job_id: &str) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT file_path, candidate_id FROM resumes WHERE job_id = ?1")?;
+    let mut resume_paths = Vec::new();
+    let mut candidate_ids = Vec::new();
+
+    let rows = stmt.query_map(params![job_id], |r| {
+        let path: String = r.get(0)?;
+        let cid: Option<String> = r.get(1)?;
+        Ok((path, cid))
+    })?;
+
+    for row in rows {
+        if let Ok((path, cid)) = row {
+            resume_paths.push(path);
+            if let Some(c) = cid {
+                candidate_ids.push(c);
+            }
+        }
+    }
+
+    conn.execute("DELETE FROM processing_queue WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM embeddings WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM job_embeddings WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM candidate_analysis WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM shortlists WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM resumes WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM job_skills WHERE job_id = ?1", params![job_id])?;
+    conn.execute("DELETE FROM jobs WHERE id = ?1", params![job_id])?;
+
+    for cid in candidate_ids {
+        let remaining_resumes: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM resumes WHERE candidate_id = ?1",
+            params![cid],
+            |r| r.get(0),
+        ).unwrap_or(0);
+
+        if remaining_resumes == 0 {
+            conn.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid]).ok();
+            conn.execute("DELETE FROM candidates WHERE id = ?1", params![cid]).ok();
+        }
+    }
+
+    Ok(resume_paths)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+    use crate::db::migrations::INITIAL_MIGRATION;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(INITIAL_MIGRATION).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_create_and_delete_job_db() {
+        let conn = setup_test_db();
+        let payload = CreateJobPayload {
+            title: "Rust Architect".to_string(),
+            description: "Build high-throughput backends".to_string(),
+            location: Some("Remote".to_string()),
+            employment_type: Some("Full-time".to_string()),
+            experience_required_years: Some(5.0),
+            skills: vec![
+                SkillPayload { skill: "Rust".to_string(), importance: "required".to_string() },
+                SkillPayload { skill: "Tokio".to_string(), importance: "preferred".to_string() },
+            ],
+        };
+
+        let job = create_job(&conn, payload).unwrap();
+        assert_eq!(job.title, "Rust Architect");
+
+        let fetched = get_job(&conn, &job.id).unwrap();
+        assert_eq!(fetched.skills.len(), 2);
+
+        // Delete job
+        let deleted_paths = delete_job_db(&conn, &job.id).unwrap();
+        assert_eq!(deleted_paths.len(), 0);
+
+        let lookup = get_job(&conn, &job.id);
+        assert!(lookup.is_err());
+    }
+}
+
+

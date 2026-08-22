@@ -53,3 +53,24 @@ pub async fn archive_job(
     let db = state.db.lock().await;
     db_archive_job(&db, &job_id).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn delete_job(
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<(), String> {
+    let resume_paths = {
+        let db = state.db.lock().await;
+        crate::db::queries::jobs::delete_job_db(&db, &job_id).map_err(|e| e.to_string())?
+    };
+
+    for path in resume_paths {
+        tokio::fs::remove_file(&path).await.ok();
+    }
+
+    let job_dir = state.app_data_dir.join("resumes").join(&job_id);
+    tokio::fs::remove_dir_all(&job_dir).await.ok();
+
+    Ok(())
+}
+

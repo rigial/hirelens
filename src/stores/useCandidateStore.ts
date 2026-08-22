@@ -15,6 +15,7 @@ interface CandidateStore {
   retryResume: (jobId: string, resumeId: string) => Promise<void>;
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => void;
   fetchProcessingStatus: (jobId: string) => Promise<void>;
+  deleteResume: (jobId: string, resumeId: string) => Promise<void>;
 }
 
 export const useCandidateStore = create<CandidateStore>((set, get) => ({
@@ -87,6 +88,24 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
     }
   },
 
+  deleteResume: async (jobId: string, resumeId: string) => {
+    try {
+      await api.candidates.deleteResume(resumeId);
+      set((state) => ({
+        candidates: state.candidates.filter((c) => c.resumeId !== resumeId),
+        activeCandidateDetail:
+          state.activeCandidateDetail?.resumeId === resumeId ? null : state.activeCandidateDetail,
+      }));
+      await Promise.all([
+        get().fetchCandidates(jobId),
+        get().fetchProcessingStatus(jobId),
+      ]);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to delete resume';
+      set({ error: msg });
+      throw err;
+    }
+  },
 
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => {
     // Trigger candidate list refresh
@@ -105,3 +124,4 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
     }
   },
 }));
+

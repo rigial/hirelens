@@ -12,6 +12,7 @@ interface JobStore {
   createJob: (payload: CreateJobPayload) => Promise<Job>;
   updateJob: (jobId: string, payload: UpdateJobPayload) => Promise<Job>;
   archiveJob: (jobId: string) => Promise<void>;
+  deleteJob: (jobId: string) => Promise<void>;
 }
 
 export const useJobStore = create<JobStore>((set, get) => ({
@@ -77,4 +78,21 @@ export const useJobStore = create<JobStore>((set, get) => ({
       throw err;
     }
   },
+
+  deleteJob: async (jobId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.jobs.delete(jobId);
+      set((state) => ({
+        jobs: state.jobs.filter((j) => j.id !== jobId),
+        activeJob: state.activeJob?.id === jobId ? null : state.activeJob,
+        isLoading: false,
+      }));
+      await get().fetchJobs();
+    } catch (err: any) {
+      set({ error: err?.toString() || 'Failed to delete job', isLoading: false });
+      throw err;
+    }
+  },
 }));
+

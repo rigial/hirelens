@@ -239,4 +239,30 @@ export function formatResumeText(raw: string): string {
   return cleaned.join('\n');
 }
 
+/**
+ * Formats a duration in seconds into a friendly estimated remaining time string.
+ *
+ * @param seconds - Number of seconds remaining
+ * @returns Human-readable ETA string (e.g., "< 10s remaining", "45s remaining", "About 2 mins remaining", "1h 15m remaining")
+ */
+export function formatEstimatedTime(seconds: number): string {
+  if (seconds < 0 || isNaN(seconds) || !isFinite(seconds)) return '';
+  if (seconds < 10) return '< 10s remaining';
+  if (seconds < 60) return `${Math.round(seconds)}s remaining`;
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSecs = Math.round(seconds % 60);
+
+  if (minutes < 60) {
+    if (remainingSecs === 0) {
+      return `About ${minutes} min${minutes > 1 ? 's' : ''} remaining`;
+    }
+    return `~${minutes}m ${remainingSecs}s remaining`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  return `~${hours}h ${remainingMins}m remaining`;
+}
+
 

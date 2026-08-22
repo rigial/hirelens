@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, RotateCcw, AlertCircle, Loader2, FileWarning } from 'lucide-react';
+import { Check, X, RotateCcw, AlertCircle, Loader2, FileWarning, Trash2 } from 'lucide-react';
 import { CandidateWithAnalysis } from '../../types/candidate';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -23,8 +23,9 @@ interface CandidateCardProps {
  */
 export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCardProps) {
   const navigate = useNavigate();
-  const { retryResume } = useCandidateStore();
+  const { retryResume, deleteResume } = useCandidateStore();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
   const analysis = candidate.analysis;
@@ -59,6 +60,21 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
       setTimeout(() => setRetryError(null), 6000);
     } finally {
       setIsRetrying(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDeleting || !candidate.resumeId) return;
+    if (window.confirm(`Are you sure you want to delete ${candidate.name}'s resume? This action cannot be undone.`)) {
+      setIsDeleting(true);
+      try {
+        await deleteResume(jobId, candidate.resumeId);
+      } catch (err: any) {
+        alert(err?.toString() || 'Failed to delete resume');
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -133,8 +149,11 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
               )}
             </div>
           ) : isPendingProcessing ? (
-            <p className="text-xs text-indigo-600 font-medium">
-              Extracting candidate profile...
+            <p className="text-xs text-indigo-600 font-medium flex items-center gap-1.5">
+              <span>Extracting profile & scoring candidate...</span>
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-100 font-mono">
+                ~8s remaining
+              </span>
             </p>
           ) : isScannedPdf ? (
             <div className="flex items-center gap-2 flex-wrap text-xs text-amber-700 font-medium">
@@ -234,6 +253,21 @@ export function CandidateCard({ candidate, jobId, onUpdateStatus }: CandidateCar
               <X className="h-3.5 w-3.5" /> Reject
             </Button>
           )}
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title="Delete Resume"
+            className="text-xs text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
         </div>
       </div>
     </div>

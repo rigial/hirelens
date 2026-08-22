@@ -18,6 +18,7 @@ import {
   Eye,
   Code,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { CandidateDetail as CandidateDetailType } from '../../types/candidate';
 import { ScoreBreakdown } from './ScoreBreakdown';
@@ -27,6 +28,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { getScoreColor, formatResumeText } from '../../lib/utils';
+import { useCandidateStore } from '../../stores/useCandidateStore';
 import { api } from '../../lib/tauri';
 
 interface CandidateDetailProps {
@@ -44,10 +46,12 @@ interface CandidateDetailProps {
  */
 export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateDetailProps) {
   const navigate = useNavigate();
+  const { deleteResume } = useCandidateStore();
   const [activeTab, setActiveTab] = useState<'analysis' | 'resume'>('analysis');
   const [resumeViewMode, setResumeViewMode] = useState<'formatted' | 'raw'>('formatted');
   const [notes, setNotes] = useState(candidate.shortlistNotes || '');
   const [isOpeningFile, setIsOpeningFile] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [openFileError, setOpenFileError] = useState<string | null>(null);
   const [isCopiedPath, setIsCopiedPath] = useState(false);
   const [isCopiedText, setIsCopiedText] = useState(false);
@@ -69,6 +73,20 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
   const handleStatusChange = async (status: string) => {
     await onUpdateStatus(status, notes);
+  };
+
+  const handleDeleteResume = async () => {
+    if (!candidate.resumeId || isDeleting) return;
+    if (window.confirm(`Are you sure you want to delete ${candidate.name}'s resume? This cannot be undone.`)) {
+      setIsDeleting(true);
+      try {
+        await deleteResume(jobId, candidate.resumeId);
+        navigate(`/jobs/${jobId}`);
+      } catch (err: any) {
+        alert(err?.toString() || 'Failed to delete resume');
+        setIsDeleting(false);
+      }
+    }
   };
 
   const handleOpenOriginalFile = async () => {
@@ -247,6 +265,25 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 ) : (
                   <>
                     <X className="h-3.5 w-3.5" /> Reject
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteResume}
+                disabled={isDeleting}
+                className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300"
+                title="Delete Resume"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" /> Delete Resume
                   </>
                 )}
               </Button>

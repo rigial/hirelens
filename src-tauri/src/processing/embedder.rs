@@ -493,10 +493,10 @@ mod tests {
         assert_eq!(cosine_to_semantic_score(f64::NAN), 50.0);
 
         let score_pos = cosine_to_semantic_score(0.6);
-        assert!(score_pos >= 50.0 && score_pos <= 100.0);
+        assert!((50.0..=100.0).contains(&score_pos));
 
         let score_neg = cosine_to_semantic_score(-0.4);
-        assert!(score_neg >= 0.0 && score_neg <= 50.0);
+        assert!((0.0..=50.0).contains(&score_neg));
     }
 
     #[test]

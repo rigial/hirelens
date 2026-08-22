@@ -1,4 +1,49 @@
-use std::path::Path;
+use super::models::PageExtraction;
+
+const MULTI_WORD_SECTIONS: &[&str] = &[
+    "PROFESSIONAL SUMMARY",
+    "EXECUTIVE SUMMARY",
+    "TECHNICAL SKILLS",
+    "SKILLS & ABILITIES",
+    "CORE COMPETENCIES",
+    "PROFESSIONAL EXPERIENCE",
+    "WORK EXPERIENCE",
+    "EMPLOYMENT HISTORY",
+    "CAREER HISTORY",
+    "KEY PROJECTS",
+    "PERSONAL PROJECTS",
+    "ACADEMIC BACKGROUND",
+    "CERTIFICATIONS & LICENSES",
+];
+
+const SINGLE_WORD_SECTIONS: &[&str] = &[
+    "SUMMARY",
+    "PROFILE",
+    "SKILLS",
+    "EXPERIENCE",
+    "PROJECTS",
+    "EDUCATION",
+    "CERTIFICATIONS",
+    "ACHIEVEMENTS",
+    "AWARDS",
+    "PUBLICATIONS",
+    "LANGUAGES",
+    "INTERESTS",
+    "VOLUNTEERING",
+];
+
+const ROLE_PREFIXES: &[&str] = &[
+    "Software", "Senior", "Lead", "Product", "Frontend", "Backend",
+    "Full-Stack", "Full", "Staff", "Principal", "Junior", "Head",
+];
+
+const ROLE_SUFFIXES: &[&str] = &[
+    "Engineer", "Developer", "Architect", "Designer", "Manager", "Development", "Director",
+];
+
+const DEGREE_OPENERS: &[&str] = &[
+    "Bachelor", "Master", "B.E.", "B.Tech", "B.S.", "M.S.", "M.Tech", "Ph.D", "PhD", "MBA", "MCA",
+];
 
 /// Normalizes raw extracted PDF text, reconstructing fragmented words and artificial line breaks
 /// into clean paragraphs, distinct section headers, and formatted bullet points.
@@ -7,51 +52,6 @@ pub fn normalize_extracted_text(raw: &str) -> String {
     if tokens.is_empty() {
         return String::new();
     }
-
-    const MULTI_WORD_SECTIONS: &[&str] = &[
-        "PROFESSIONAL SUMMARY",
-        "EXECUTIVE SUMMARY",
-        "TECHNICAL SKILLS",
-        "SKILLS & ABILITIES",
-        "CORE COMPETENCIES",
-        "PROFESSIONAL EXPERIENCE",
-        "WORK EXPERIENCE",
-        "EMPLOYMENT HISTORY",
-        "CAREER HISTORY",
-        "KEY PROJECTS",
-        "PERSONAL PROJECTS",
-        "ACADEMIC BACKGROUND",
-        "CERTIFICATIONS & LICENSES",
-    ];
-
-    const SINGLE_WORD_SECTIONS: &[&str] = &[
-        "SUMMARY",
-        "PROFILE",
-        "SKILLS",
-        "EXPERIENCE",
-        "PROJECTS",
-        "EDUCATION",
-        "CERTIFICATIONS",
-        "ACHIEVEMENTS",
-        "AWARDS",
-        "PUBLICATIONS",
-        "LANGUAGES",
-        "INTERESTS",
-        "VOLUNTEERING",
-    ];
-
-    const ROLE_PREFIXES: &[&str] = &[
-        "Software", "Senior", "Lead", "Product", "Frontend", "Backend",
-        "Full-Stack", "Full", "Staff", "Principal", "Junior", "Head"
-    ];
-
-    const ROLE_SUFFIXES: &[&str] = &[
-        "Engineer", "Developer", "Architect", "Designer", "Manager", "Development", "Director"
-    ];
-
-    const DEGREE_OPENERS: &[&str] = &[
-        "Bachelor", "Master", "B.E.", "B.Tech", "B.S.", "M.S.", "M.Tech", "Ph.D", "PhD", "MBA", "MCA"
-    ];
 
     let mut lines: Vec<String> = Vec::new();
     let mut current_line: Vec<&str> = Vec::new();
@@ -168,6 +168,28 @@ pub fn normalize_extracted_text(raw: &str) -> String {
     cleaned.join("\n")
 }
 
+/// Combines multiple page extractions into a normalized document, preserving page order
+/// and eliminating duplicate header/boundary text.
+pub fn combine_and_normalize_pages(pages: &[PageExtraction]) -> String {
+    let mut combined_chunks: Vec<String> = Vec::with_capacity(pages.len());
+
+    for page in pages {
+        let normalized_page = normalize_extracted_text(&page.text);
+        let trimmed = normalized_page.trim();
+        if !trimmed.is_empty() {
+            // Avoid duplicate consecutive text chunks across page boundaries
+            if let Some(last) = combined_chunks.last() {
+                if last.trim() == trimmed {
+                    continue;
+                }
+            }
+            combined_chunks.push(trimmed.to_string());
+        }
+    }
+
+    combined_chunks.join("\n\n")
+}
+
 fn is_all_uppercase_token(t: &str) -> bool {
     let chars: Vec<char> = t.chars().filter(|c| c.is_alphabetic()).collect();
     !chars.is_empty() && chars.iter().all(|c| c.is_uppercase())
@@ -194,61 +216,58 @@ fn is_year(s: &str) -> bool {
     s.len() == 4 && (s.starts_with("19") || s.starts_with("20")) && s.chars().all(|c| c.is_ascii_digit())
 }
 
-/// Extracts text from all pages of a PDF and returns normalized, cleanly wrapped text.
-///
-/// # Returns
-///
-/// The combined extracted text with preserved headers and lists.
-///
-/// # Errors
-///
-/// Returns an error if the PDF cannot be loaded or contains no extractable text.
-pub fn extract_pdf_text<P: AsRef<Path>>(path: P) -> Result<String, String> {
-    let doc = lopdf::Document::load(path).map_err(|e| format!("Failed to load PDF: {}", e))?;
-    let mut extracted_text = String::new();
-
-    let pages = doc.get_pages();
-    for (page_num, _) in pages {
-        if let Ok(text) = doc.extract_text(&[page_num]) {
-            extracted_text.push_str(&text);
-            extracted_text.push('\n');
-        }
-    }
-
-    if extracted_text.trim().is_empty() {
-        return Err("PDF appears to be scanned or contains no extractable text layer.".to_string());
-    }
-
-    let normalized = normalize_extracted_text(&extracted_text);
-    if normalized.trim().is_empty() {
-        return Err("PDF appears to be scanned or contains no extractable text layer.".to_string());
-    }
-
-    Ok(normalized)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::processing::parser::pdf::models::ExtractionSource;
 
     #[test]
-    fn test_extract_nonexistent_pdf() {
-        let res = extract_pdf_text("/nonexistent/file/path.pdf");
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn test_normalize_extracted_text_single_words() {
+    fn test_normalize_single_words() {
         let raw = "Experienced\n \nFull-Stack\n \nDeveloper\n \nwith\n \nexpertise\n \nin\n \nReact\n \nand\n \nRust.";
         let normalized = normalize_extracted_text(raw);
         assert_eq!(normalized, "Experienced Full-Stack Developer with expertise in React and Rust.");
     }
 
     #[test]
-    fn test_normalize_extracted_text_bullets_and_headers() {
+    fn test_normalize_bullets_and_headers() {
         let raw = "PROFESSIONAL EXPERIENCE\n \n●\n \nDesigned\n \nand\n \nbuilt\n \nAPIs.\n \n●\n \nManaged\n \nsystems.";
         let normalized = normalize_extracted_text(raw);
         assert!(normalized.contains("PROFESSIONAL EXPERIENCE\n\n● Designed and built APIs.\n● Managed systems."));
     }
-}
 
+    #[test]
+    fn test_combine_and_normalize_pages_ordering_and_dedup() {
+        let pages = vec![
+            PageExtraction {
+                page_number: 1,
+                source: ExtractionSource::PdfText,
+                text: "Page 1: Jane Doe Senior Software Engineer\n\nSUMMARY\nPassionate builder with 8 years experience in Rust".to_string(),
+                duration_ms: 10,
+            },
+            PageExtraction {
+                page_number: 2,
+                source: ExtractionSource::Ocr,
+                text: "Page 2: EXPERIENCE\n● Senior Architect at Acme Corp 2020 - Present\n● Designed scalable search engine".to_string(),
+                duration_ms: 50,
+            },
+            PageExtraction {
+                page_number: 3,
+                source: ExtractionSource::PdfText,
+                text: "Page 3: EDUCATION\nMaster of Science in Computer Science Stanford University 2018".to_string(),
+                duration_ms: 12,
+            },
+        ];
+
+        let combined = combine_and_normalize_pages(&pages);
+        assert!(combined.contains("Jane Doe"));
+        assert!(combined.contains("Acme Corp"));
+        assert!(combined.contains("Stanford University"));
+
+        // Ensure Jane Doe comes before Acme Corp which comes before Stanford University (preserves page order)
+        let pos1 = combined.find("Jane Doe").unwrap();
+        let pos2 = combined.find("Acme Corp").unwrap();
+        let pos3 = combined.find("Stanford University").unwrap();
+        assert!(pos1 < pos2);
+        assert!(pos2 < pos3);
+    }
+}

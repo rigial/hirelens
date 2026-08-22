@@ -39,6 +39,12 @@ pub struct LlamaClient {
     engine: Option<GgufEngine>,
 }
 
+impl Default for LlamaClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LlamaClient {
     pub fn new() -> Self {
         Self {
@@ -137,12 +143,14 @@ impl LlamaClient {
         fallback
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn analyze_candidate(
         &mut self,
         candidate: &ExtractedCandidate,
         job_title: &str,
         job_skills: &[String],
-        experience_required: Option<f64>,
+        min_experience_required: Option<f64>,
+        max_experience_required: Option<f64>,
         job_desc: &str,
         deterministic_score: f64,
     ) -> QualitativeAnalysis {
@@ -150,7 +158,8 @@ impl LlamaClient {
             candidate,
             job_title,
             job_skills,
-            experience_required,
+            min_experience_required,
+            max_experience_required,
             job_desc,
             deterministic_score,
         );
@@ -159,7 +168,8 @@ impl LlamaClient {
             let prompt = build_analysis_prompt(
                 job_title,
                 job_skills,
-                experience_required,
+                min_experience_required,
+                max_experience_required,
                 job_desc,
                 &candidate.name,
                 &candidate.skills,
@@ -203,12 +213,14 @@ impl LlamaClient {
         fallback
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn heuristic_analyze(
         &self,
         candidate: &ExtractedCandidate,
         job_title: &str,
         job_skills: &[String],
-        experience_required: Option<f64>,
+        min_experience_required: Option<f64>,
+        max_experience_required: Option<f64>,
         _job_desc: &str,
         deterministic_score: f64,
     ) -> QualitativeAnalysis {
@@ -224,14 +236,33 @@ impl LlamaClient {
         }
 
         if let Some(cand_exp) = candidate.experience_years {
-            if let Some(req_exp) = experience_required {
-                if cand_exp >= req_exp {
-                    strengths.push(format!("Meets or exceeds experience requirement with {:.1} years in the field", cand_exp));
-                } else {
-                    concerns.push(format!("Has {:.1} years of experience vs {:.1} years specified for this position", cand_exp, req_exp));
+            match (min_experience_required, max_experience_required) {
+                (Some(min), Some(max)) if min > 0.0 && max > 0.0 => {
+                    if cand_exp >= min && cand_exp <= max {
+                        strengths.push(format!("Aligned with target experience range ({:.1} - {:.1} years) with {:.1} years in the field", min, max, cand_exp));
+                    } else if cand_exp < min {
+                        concerns.push(format!("Has {:.1} years of experience vs {:.1} - {:.1} years required for this position", cand_exp, min, max));
+                    } else {
+                        strengths.push(format!("Brings {:.1} years of extensive background, exceeding the {:.1} year upper range", cand_exp, max));
+                    }
                 }
-            } else {
-                strengths.push(format!("Brings {:.1} years of professional background", cand_exp));
+                (Some(min), _) if min > 0.0 => {
+                    if cand_exp >= min {
+                        strengths.push(format!("Meets or exceeds experience requirement with {:.1} years in the field", cand_exp));
+                    } else {
+                        concerns.push(format!("Has {:.1} years of experience vs {:.1}+ years specified for this position", cand_exp, min));
+                    }
+                }
+                (_, Some(max)) if max > 0.0 => {
+                    if cand_exp <= max {
+                        strengths.push(format!("Fits within target experience range (up to {:.1} years) with {:.1} years", max, cand_exp));
+                    } else {
+                        strengths.push(format!("Brings {:.1} years of seasoned background", cand_exp));
+                    }
+                }
+                _ => {
+                    strengths.push(format!("Brings {:.1} years of professional background", cand_exp));
+                }
             }
         }
 
@@ -561,7 +592,8 @@ Bachelor of Science in Computer Science, Stanford University
             &candidate,
             "Senior Rust Engineer",
             &job_skills,
-            Some(4.0),
+            Some(3.0),
+            Some(6.0),
             "We are looking for a Senior Rust Engineer...",
             80.0,
         ).await;

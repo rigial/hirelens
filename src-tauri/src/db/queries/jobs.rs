@@ -23,6 +23,8 @@ pub struct CreateJobPayload {
     pub location: Option<String>,
     pub employment_type: Option<String>,
     pub experience_required_years: Option<f64>,
+    pub min_experience_years: Option<f64>,
+    pub max_experience_years: Option<f64>,
     pub skills: Vec<SkillPayload>,
 }
 
@@ -34,6 +36,8 @@ pub struct UpdateJobPayload {
     pub location: Option<String>,
     pub employment_type: Option<String>,
     pub experience_required_years: Option<f64>,
+    pub min_experience_years: Option<f64>,
+    pub max_experience_years: Option<f64>,
     pub skills: Vec<SkillPayload>,
 }
 
@@ -46,6 +50,8 @@ pub struct Job {
     pub location: Option<String>,
     pub employment_type: Option<String>,
     pub experience_required_years: Option<f64>,
+    pub min_experience_years: Option<f64>,
+    pub max_experience_years: Option<f64>,
     pub status: String,
     pub skills: Vec<Skill>,
     pub created_at: String,
@@ -60,6 +66,8 @@ pub struct JobSummary {
     pub location: Option<String>,
     pub employment_type: Option<String>,
     pub experience_required_years: Option<f64>,
+    pub min_experience_years: Option<f64>,
+    pub max_experience_years: Option<f64>,
     pub status: String,
     pub candidate_count: i64,
     pub shortlisted_count: i64,
@@ -72,16 +80,22 @@ pub fn create_job(conn: &Connection, payload: CreateJobPayload) -> Result<Job> {
     let job_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
+    let min_exp = payload.min_experience_years.or(payload.experience_required_years);
+    let max_exp = payload.max_experience_years;
+    let legacy_exp = min_exp;
+
     conn.execute(
-        "INSERT INTO jobs (id, title, description, location, employment_type, experience_required_years, status, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'active', ?7, ?7)",
+        "INSERT INTO jobs (id, title, description, location, employment_type, experience_required_years, min_experience_years, max_experience_years, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'active', ?9, ?9)",
         params![
             job_id,
             payload.title,
             payload.description,
             payload.location,
             payload.employment_type,
-            payload.experience_required_years,
+            legacy_exp,
+            min_exp,
+            max_exp,
             now
         ],
     )?;
@@ -106,7 +120,9 @@ pub fn create_job(conn: &Connection, payload: CreateJobPayload) -> Result<Job> {
         description: payload.description,
         location: payload.location,
         employment_type: payload.employment_type,
-        experience_required_years: payload.experience_required_years,
+        experience_required_years: legacy_exp,
+        min_experience_years: min_exp,
+        max_experience_years: max_exp,
         status: "active".to_string(),
         skills: saved_skills,
         created_at: now.clone(),
@@ -116,7 +132,7 @@ pub fn create_job(conn: &Connection, payload: CreateJobPayload) -> Result<Job> {
 
 pub fn get_jobs(conn: &Connection) -> Result<Vec<JobSummary>> {
     let mut stmt = conn.prepare(
-        "SELECT j.id, j.title, j.location, j.employment_type, j.experience_required_years, j.status, j.created_at, j.updated_at,
+        "SELECT j.id, j.title, j.location, j.employment_type, j.experience_required_years, j.min_experience_years, j.max_experience_years, j.status, j.created_at, j.updated_at,
                 (SELECT COUNT(*) FROM resumes r WHERE r.job_id = j.id) as candidate_count,
                 (SELECT COUNT(*) FROM shortlists s WHERE s.job_id = j.id AND s.status = 'shortlisted') as shortlisted_count,
                 (SELECT COUNT(*) FROM resumes r WHERE r.job_id = j.id AND r.status IN ('pending', 'queued', 'extracting', 'analyzing')) as processing_count
@@ -126,18 +142,24 @@ pub fn get_jobs(conn: &Connection) -> Result<Vec<JobSummary>> {
     )?;
 
     let job_iter = stmt.query_map([], |row| {
+        let exp_req: Option<f64> = row.get(4)?;
+        let min_exp: Option<f64> = row.get(5)?;
+        let max_exp: Option<f64> = row.get(6)?;
+
         Ok(JobSummary {
             id: row.get(0)?,
             title: row.get(1)?,
             location: row.get(2)?,
             employment_type: row.get(3)?,
-            experience_required_years: row.get(4)?,
-            status: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-            candidate_count: row.get(8)?,
-            shortlisted_count: row.get(9)?,
-            processing_count: row.get(10)?,
+            experience_required_years: exp_req.or(min_exp),
+            min_experience_years: min_exp.or(exp_req),
+            max_experience_years: max_exp,
+            status: row.get(7)?,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+            candidate_count: row.get(10)?,
+            shortlisted_count: row.get(11)?,
+            processing_count: row.get(12)?,
         })
     })?;
 
@@ -150,22 +172,28 @@ pub fn get_jobs(conn: &Connection) -> Result<Vec<JobSummary>> {
 
 pub fn get_job(conn: &Connection, job_id: &str) -> Result<Job> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, description, location, employment_type, experience_required_years, status, created_at, updated_at
+        "SELECT id, title, description, location, employment_type, experience_required_years, min_experience_years, max_experience_years, status, created_at, updated_at
          FROM jobs WHERE id = ?1"
     )?;
 
     let mut job = stmt.query_row(params![job_id], |row| {
+        let exp_req: Option<f64> = row.get(5)?;
+        let min_exp: Option<f64> = row.get(6)?;
+        let max_exp: Option<f64> = row.get(7)?;
+
         Ok(Job {
             id: row.get(0)?,
             title: row.get(1)?,
             description: row.get(2)?,
             location: row.get(3)?,
             employment_type: row.get(4)?,
-            experience_required_years: row.get(5)?,
-            status: row.get(6)?,
+            experience_required_years: exp_req.or(min_exp),
+            min_experience_years: min_exp.or(exp_req),
+            max_experience_years: max_exp,
+            status: row.get(8)?,
             skills: Vec::new(),
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
         })
     })?;
 
@@ -188,15 +216,21 @@ pub fn get_job(conn: &Connection, job_id: &str) -> Result<Job> {
 pub fn update_job(conn: &Connection, job_id: &str, payload: UpdateJobPayload) -> Result<Job> {
     let now = chrono::Utc::now().to_rfc3339();
 
+    let min_exp = payload.min_experience_years.or(payload.experience_required_years);
+    let max_exp = payload.max_experience_years;
+    let legacy_exp = min_exp;
+
     conn.execute(
-        "UPDATE jobs SET title = ?1, description = ?2, location = ?3, employment_type = ?4, experience_required_years = ?5, updated_at = ?6
-         WHERE id = ?7",
+        "UPDATE jobs SET title = ?1, description = ?2, location = ?3, employment_type = ?4, experience_required_years = ?5, min_experience_years = ?6, max_experience_years = ?7, updated_at = ?8
+         WHERE id = ?9",
         params![
             payload.title,
             payload.description,
             payload.location,
             payload.employment_type,
-            payload.experience_required_years,
+            legacy_exp,
+            min_exp,
+            max_exp,
             now,
             job_id
         ],
@@ -302,7 +336,9 @@ mod tests {
             description: "Build high-throughput backends".to_string(),
             location: Some("Remote".to_string()),
             employment_type: Some("Full-time".to_string()),
-            experience_required_years: Some(5.0),
+            experience_required_years: None,
+            min_experience_years: Some(2.0),
+            max_experience_years: Some(4.0),
             skills: vec![
                 SkillPayload { skill: "Rust".to_string(), importance: "required".to_string() },
                 SkillPayload { skill: "Tokio".to_string(), importance: "preferred".to_string() },
@@ -311,9 +347,31 @@ mod tests {
 
         let job = create_job(&conn, payload).unwrap();
         assert_eq!(job.title, "Rust Architect");
+        assert_eq!(job.min_experience_years, Some(2.0));
+        assert_eq!(job.max_experience_years, Some(4.0));
 
         let fetched = get_job(&conn, &job.id).unwrap();
         assert_eq!(fetched.skills.len(), 2);
+        assert_eq!(fetched.min_experience_years, Some(2.0));
+        assert_eq!(fetched.max_experience_years, Some(4.0));
+
+        // Update with modified range
+        let update_payload = UpdateJobPayload {
+            title: "Staff Rust Architect".to_string(),
+            description: "Lead distributed teams".to_string(),
+            location: Some("Remote".to_string()),
+            employment_type: Some("Full-time".to_string()),
+            experience_required_years: None,
+            min_experience_years: Some(5.0),
+            max_experience_years: Some(8.0),
+            skills: vec![
+                SkillPayload { skill: "Rust".to_string(), importance: "required".to_string() },
+            ],
+        };
+        let updated = update_job(&conn, &job.id, update_payload).unwrap();
+        assert_eq!(updated.title, "Staff Rust Architect");
+        assert_eq!(updated.min_experience_years, Some(5.0));
+        assert_eq!(updated.max_experience_years, Some(8.0));
 
         // Delete job
         let deleted_paths = delete_job_db(&conn, &job.id).unwrap();
@@ -332,6 +390,8 @@ mod tests {
             location: None,
             employment_type: None,
             experience_required_years: None,
+            min_experience_years: None,
+            max_experience_years: None,
             skills: vec![],
         };
         let job = create_job(&conn, payload).unwrap();

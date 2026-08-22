@@ -10,7 +10,8 @@ use crate::db::queries::analysis::upsert_analysis;
 use crate::db::queries::queue::update_queue_status;
 use crate::db::queries::embeddings::{upsert_resume_embedding, upsert_job_embedding, get_job_embedding};
 use crate::llm::client::LlamaClient;
-use crate::processing::parser::extract_text_from_file;
+use crate::ocr::create_default_ocr_provider;
+use crate::processing::parser::extract_text_from_file_with_ocr;
 use crate::processing::matcher::{match_skills, match_experience};
 use crate::processing::embedder::{generate_embedding, compute_semantic_similarity_from_vectors};
 use crate::processing::ranker::compute_final_score;
@@ -47,9 +48,10 @@ pub async fn run_processing_pipeline(
         "step": "extracting"
     })).ok();
 
-    // STEP 1 — Document Parsing (PDF / DOCX)
-    let raw_text = match extract_text_from_file(&resume.file_path) {
-        Ok(text) => text,
+    // STEP 1 — Document Parsing (PDF with Hybrid OCR Fallback / DOCX)
+    let ocr_provider = create_default_ocr_provider();
+    let extraction = match extract_text_from_file_with_ocr(&resume.file_path, &*ocr_provider).await {
+        Ok(res) => res,
         Err(err) => {
             let db = conn.lock().await;
             update_resume_status(&db, resume_id, "failed", Some(&err)).ok();
@@ -62,6 +64,21 @@ pub async fn run_processing_pipeline(
             return Err(err);
         }
     };
+
+    let raw_text = extraction.text;
+
+    // Emit extraction completed telemetry event (FR-13)
+    if let Some(meta) = &extraction.pdf_metadata {
+        app.emit("resume-extraction-completed", serde_json::json!({
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "pages": meta.total_pages,
+            "text_pages": meta.text_pages,
+            "ocr_pages": meta.ocr_pages,
+            "method": meta.method,
+            "duration_ms": meta.total_duration_ms
+        })).ok();
+    }
 
     // Save extracted raw text
     {
@@ -126,7 +143,9 @@ pub async fn run_processing_pipeline(
     })).ok();
 
     let skill_result = match_skills(&job.skills, &extracted_cand.skills);
-    let experience_score = match_experience(job.experience_required_years, extracted_cand.experience_years);
+    let min_exp = job.min_experience_years.or(job.experience_required_years);
+    let max_exp = job.max_experience_years;
+    let experience_score = match_experience(min_exp, max_exp, extracted_cand.experience_years);
     let deterministic_score = (skill_result.skills_score * 0.6 + experience_score * 0.4).clamp(0.0, 100.0);
 
     // STEP 5 — LLM Qualitative Analysis
@@ -137,7 +156,8 @@ pub async fn run_processing_pipeline(
             &extracted_cand,
             &job.title,
             &job_skills_names,
-            job.experience_required_years,
+            min_exp,
+            max_exp,
             &job.description,
             deterministic_score,
         ).await

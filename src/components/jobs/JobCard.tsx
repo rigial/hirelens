@@ -55,11 +55,22 @@ export function JobCard({ job }: JobCardProps) {
               {job.employmentType && (
                 <span className="capitalize">{job.employmentType}</span>
               )}
-              {job.experienceRequiredYears !== null && job.experienceRequiredYears !== undefined && (
-                <span>
-                  {job.experienceRequiredYears > 0 ? `${job.experienceRequiredYears} yrs exp` : 'Any exp'}
-                </span>
-              )}
+              <span>
+                {(() => {
+                  const min = job.minExperienceYears ?? (job.experienceRequiredYears && job.experienceRequiredYears > 0 ? job.experienceRequiredYears : null);
+                  const max = job.maxExperienceYears ?? null;
+                  if (min !== null && min !== undefined && max !== null && max !== undefined && max >= min) {
+                    return min === max ? `${min} yrs exp` : `${min}-${max} yrs exp`;
+                  }
+                  if (min !== null && min !== undefined && min > 0) {
+                    return `${min}+ yrs exp`;
+                  }
+                  if (max !== null && max !== undefined && max > 0) {
+                    return `Up to ${max} yrs exp`;
+                  }
+                  return 'Any exp';
+                })()}
+              </span>
             </div>
           </div>
 

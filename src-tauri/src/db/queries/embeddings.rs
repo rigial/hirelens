@@ -12,7 +12,7 @@ pub fn vector_to_blob(vec: &[f32]) -> Vec<u8> {
 
 /// Convert a raw byte slice back into a vector of 32-bit floats
 pub fn blob_to_vector(blob: &[u8]) -> Result<Vec<f32>, String> {
-    if blob.len() % 4 != 0 {
+    if !blob.len().is_multiple_of(4) {
         return Err(format!("Invalid vector blob length {}: must be a multiple of 4 bytes", blob.len()));
     }
     let mut vec = Vec::with_capacity(blob.len() / 4);

@@ -21,10 +21,8 @@ pub async fn get_settings(
     }).map_err(|e| e.to_string())?;
 
     let mut map = HashMap::new();
-    for item in iter {
-        if let Ok((k, v)) = item {
-            map.insert(k, v);
-        }
+    for (k, v) in iter.flatten() {
+        map.insert(k, v);
     }
     Ok(map)
 }

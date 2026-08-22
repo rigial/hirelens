@@ -55,13 +55,11 @@ impl GgufEngine {
         let mut token_to_id = HashMap::new();
         let mut eos_token_id = 151645u32; // Default for Qwen2/Qwen2.5 (<|im_end|>) or 151643 (<|endoftext|>)
 
-        if let Some(val) = content.metadata.get("tokenizer.ggml.tokens") {
-            if let Value::Array(tokens) = val {
-                for (idx, token_val) in tokens.iter().enumerate() {
-                    if let Value::String(token_str) = token_val {
-                        vocab.push(token_str.clone());
-                        token_to_id.insert(token_str.clone(), idx as u32);
-                    }
+        if let Some(Value::Array(tokens)) = content.metadata.get("tokenizer.ggml.tokens") {
+            for (idx, token_val) in tokens.iter().enumerate() {
+                if let Value::String(token_str) = token_val {
+                    vocab.push(token_str.clone());
+                    token_to_id.insert(token_str.clone(), idx as u32);
                 }
             }
         }
@@ -157,8 +155,7 @@ impl GgufEngine {
 
     pub fn decode_token(&self, token_id: u32) -> String {
         if let Some(t) = self.vocab.get(token_id as usize) {
-            t.replace('Ġ', " ")
-             .replace(' ', " ")
+            t.replace(['Ġ', ' '], " ")
              .replace("<0x0A>", "\n")
              .replace("<0x20>", " ")
         } else {

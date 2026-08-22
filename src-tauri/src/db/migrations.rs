@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   location                  TEXT,
   employment_type           TEXT,
   experience_required_years REAL,
+  min_experience_years      REAL,
+  max_experience_years      REAL,
   status                    TEXT DEFAULT 'active',
   created_at                DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at                DATETIME DEFAULT CURRENT_TIMESTAMP

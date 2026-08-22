@@ -162,9 +162,22 @@ export function JobDetailPage() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-3.5 w-3.5 text-slate-400" />
                   <span>
-                    {activeJob.experienceRequiredYears && activeJob.experienceRequiredYears > 0
-                      ? `${activeJob.experienceRequiredYears} Years Experience Required`
-                      : 'Any Experience Level'}
+                    {(() => {
+                      const min = activeJob.minExperienceYears ?? (activeJob.experienceRequiredYears && activeJob.experienceRequiredYears > 0 ? activeJob.experienceRequiredYears : null);
+                      const max = activeJob.maxExperienceYears ?? null;
+                      if (min !== null && min !== undefined && max !== null && max !== undefined && max >= min) {
+                        return min === max
+                          ? `${min} Years Experience Required`
+                          : `${min} - ${max} Years Experience Required`;
+                      }
+                      if (min !== null && min !== undefined && min > 0) {
+                        return `${min}+ Years Experience Required`;
+                      }
+                      if (max !== null && max !== undefined && max > 0) {
+                        return `Up to ${max} Years Experience Required`;
+                      }
+                      return 'Any Experience Level';
+                    })()}
                   </span>
                 </div>
               </div>

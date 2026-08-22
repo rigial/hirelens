@@ -86,10 +86,12 @@ pub fn build_extraction_retry_prompt(bad_output: &str, raw_text: &str) -> String
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_analysis_prompt(
     job_title: &str,
     required_skills: &[String],
-    experience_required: Option<f64>,
+    min_experience_required: Option<f64>,
+    max_experience_required: Option<f64>,
     job_description: &str,
     candidate_name: &str,
     candidate_skills: &[String],
@@ -104,9 +106,18 @@ pub fn build_analysis_prompt(
         required_skills.join(", ")
     };
 
-    let exp_req_str = experience_required
-        .map(|e| format!("{:.1}", e))
-        .unwrap_or_else(|| "Not specified".to_string());
+    let exp_req_str = match (min_experience_required, max_experience_required) {
+        (Some(min), Some(max)) if min > 0.0 && max > 0.0 => {
+            if (min - max).abs() < 1e-4 {
+                format!("{:.1}", min).replace(".0", "") + " years"
+            } else {
+                format!("{:.1} - {:.1} years", min, max).replace(".0", "")
+            }
+        }
+        (Some(min), _) if min > 0.0 => format!("{:.1}+ years", min).replace(".0", ""),
+        (_, Some(max)) if max > 0.0 => format!("Up to {:.1} years", max).replace(".0", ""),
+        _ => "Not specified".to_string(),
+    };
 
     let job_desc_summary: String = job_description.chars().take(500).collect();
 
@@ -179,6 +190,7 @@ mod tests {
         let prompt = build_analysis_prompt(
             "Rust Backend Engineer",
             &["Rust".to_string(), "PostgreSQL".to_string()],
+            Some(2.0),
             Some(4.0),
             "Building high performance microservices.",
             "Alex Smith",
@@ -199,7 +211,7 @@ mod tests {
 
         assert!(prompt.contains("Job Title: Rust Backend Engineer"));
         assert!(prompt.contains("Required Skills: Rust, PostgreSQL"));
-        assert!(prompt.contains("Experience Required: 4.0 years"));
+        assert!(prompt.contains("Experience Required: 2 - 4 years"));
         assert!(prompt.contains("Candidate Name: Alex Smith"));
         assert!(prompt.contains("Candidate Skills: Rust, gRPC"));
         assert!(prompt.contains("BS CS (Stanford)"));

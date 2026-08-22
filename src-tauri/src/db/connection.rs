@@ -7,6 +7,7 @@ use crate::db::migrations::INITIAL_MIGRATION;
 
 static INIT_SQLITE_VEC: Once = Once::new();
 
+#[allow(clippy::missing_transmute_annotations)]
 pub fn register_sqlite_vec_extension() {
     INIT_SQLITE_VEC.call_once(|| {
         unsafe {
@@ -29,6 +30,10 @@ pub fn init_db<P: AsRef<Path>>(db_path: P) -> Result<Connection> {
     // Enable foreign keys and WAL mode for reliability and performance
     conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")?;
     conn.execute_batch(INITIAL_MIGRATION)?;
+
+    // Safe migrations for newly added columns
+    let _ = conn.execute("ALTER TABLE jobs ADD COLUMN min_experience_years REAL;", []);
+    let _ = conn.execute("ALTER TABLE jobs ADD COLUMN max_experience_years REAL;", []);
 
     let default_models = [
         (

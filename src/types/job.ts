@@ -16,6 +16,8 @@ export interface Job {
   location: string | null;
   employmentType: 'full-time' | 'part-time' | 'contract' | 'internship' | null;
   experienceRequiredYears: number | null;
+  minExperienceYears?: number | null;
+  maxExperienceYears?: number | null;
   status: 'active' | 'archived';
   skills: Skill[];
   createdAt: string;
@@ -28,6 +30,8 @@ export interface JobSummary {
   location: string | null;
   employmentType: 'full-time' | 'part-time' | 'contract' | 'internship' | null;
   experienceRequiredYears: number | null;
+  minExperienceYears?: number | null;
+  maxExperienceYears?: number | null;
   status: 'active' | 'archived';
   candidateCount: number;
   shortlistedCount: number;
@@ -42,6 +46,8 @@ export interface CreateJobPayload {
   location?: string | null;
   employmentType?: string | null;
   experienceRequiredYears?: number | null;
+  minExperienceYears?: number | null;
+  maxExperienceYears?: number | null;
   skills: SkillPayload[];
 }
 
@@ -51,5 +57,7 @@ export interface UpdateJobPayload {
   location?: string | null;
   employmentType?: string | null;
   experienceRequiredYears?: number | null;
+  minExperienceYears?: number | null;
+  maxExperienceYears?: number | null;
   skills: SkillPayload[];
 }

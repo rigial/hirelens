@@ -54,6 +54,7 @@ pub struct CandidateAnalysis {
     pub concerns: Vec<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn upsert_analysis(
     conn: &Connection,
     analysis_id: &str,

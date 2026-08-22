@@ -25,7 +25,8 @@ export function JobForm() {
   const [descriptionTab, setDescriptionTab] = useState<'write' | 'preview'>('write');
   const [location, setLocation] = useState('');
   const [employmentType, setEmploymentType] = useState<string>('full-time');
-  const [experienceRequiredYears, setExperienceRequiredYears] = useState<string>('2');
+  const [minExperienceYears, setMinExperienceYears] = useState<string>('2');
+  const [maxExperienceYears, setMaxExperienceYears] = useState<string>('4');
   const [skills, setSkills] = useState<SkillPayload[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -43,10 +44,17 @@ export function JobForm() {
       setDescription(activeJob.description);
       setLocation(activeJob.location || '');
       setEmploymentType(activeJob.employmentType || 'full-time');
-      setExperienceRequiredYears(
-        activeJob.experienceRequiredYears !== null && activeJob.experienceRequiredYears !== undefined
+      setMinExperienceYears(
+        activeJob.minExperienceYears !== null && activeJob.minExperienceYears !== undefined
+          ? activeJob.minExperienceYears.toString()
+          : activeJob.experienceRequiredYears !== null && activeJob.experienceRequiredYears !== undefined
           ? activeJob.experienceRequiredYears.toString()
-          : '0'
+          : ''
+      );
+      setMaxExperienceYears(
+        activeJob.maxExperienceYears !== null && activeJob.maxExperienceYears !== undefined
+          ? activeJob.maxExperienceYears.toString()
+          : ''
       );
       setSkills(
         activeJob.skills.map((s) => ({
@@ -63,6 +71,17 @@ export function JobForm() {
     if (title.length > 100) errs.title = 'Title must be 100 characters or less';
     if (!description.trim()) errs.description = 'Job description is required';
     if (description.trim().length < 20) errs.description = 'Description should be at least 20 characters';
+
+    const min = minExperienceYears.trim() !== '' ? parseFloat(minExperienceYears) : null;
+    const max = maxExperienceYears.trim() !== '' ? parseFloat(maxExperienceYears) : null;
+    if (min !== null && min < 0) {
+      errs.experience = 'Min experience cannot be negative';
+    } else if (max !== null && max < 0) {
+      errs.experience = 'Max experience cannot be negative';
+    } else if (min !== null && max !== null && min > max) {
+      errs.experience = 'Min experience cannot be greater than Max experience';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -71,12 +90,17 @@ export function JobForm() {
     e.preventDefault();
     if (!validate()) return;
 
+    const min = minExperienceYears.trim() !== '' ? parseFloat(minExperienceYears) : null;
+    const max = maxExperienceYears.trim() !== '' ? parseFloat(maxExperienceYears) : null;
+
     const payload = {
       title: title.trim(),
       description: description.trim(),
       location: location.trim() || null,
       employmentType: employmentType || null,
-      experienceRequiredYears: experienceRequiredYears ? parseFloat(experienceRequiredYears) : 0,
+      minExperienceYears: min,
+      maxExperienceYears: max,
+      experienceRequiredYears: min ?? 0,
       skills,
     };
 
@@ -146,15 +170,47 @@ export function JobForm() {
                 </select>
               </div>
 
-              <Input
-                label="Experience Required (Years)"
-                type="number"
-                min="0"
-                step="0.5"
-                placeholder="0 = Any"
-                value={experienceRequiredYears}
-                onChange={(e) => setExperienceRequiredYears(e.target.value)}
-              />
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Experience Required (Years)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      step="0.5"
+                      placeholder="Min (e.g. 2)"
+                      value={minExperienceYears}
+                      onChange={(e) => setMinExperienceYears(e.target.value)}
+                      className={`flex h-9 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                        errors.experience ? 'border-rose-400 focus-visible:ring-rose-500' : 'border-slate-200'
+                      }`}
+                    />
+                  </div>
+                  <span className="text-slate-400 text-xs font-medium shrink-0">to</span>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      step="0.5"
+                      placeholder="Max (e.g. 4)"
+                      value={maxExperienceYears}
+                      onChange={(e) => setMaxExperienceYears(e.target.value)}
+                      className={`flex h-9 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                        errors.experience ? 'border-rose-400 focus-visible:ring-rose-500' : 'border-slate-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+                {errors.experience ? (
+                  <p className="text-[11px] text-rose-500 font-medium">{errors.experience}</p>
+                ) : (
+                  <p className="text-[11px] text-slate-400">e.g. 2 to 4, 3+ (min only), or blank for any</p>
+                )}
+              </div>
             </div>
 
             <SkillsInput skills={skills} onChange={setSkills} />

@@ -6,6 +6,7 @@ use tauri::Manager;
 pub mod db;
 pub mod llm;
 pub mod processing;
+pub mod ocr;
 pub mod workers;
 pub mod state;
 pub mod commands;

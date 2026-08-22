@@ -16,21 +16,46 @@ export interface ModelDownloadError {
 }
 
 let wakeLockSentinel: any = null;
+let wakeLockPromise: Promise<void> | null = null;
 
-async function acquireWakeLock() {
-  if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && !wakeLockSentinel) {
+async function acquireWakeLock(): Promise<void> {
+  if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) {
+    return;
+  }
+  if (wakeLockSentinel) {
+    return;
+  }
+  if (wakeLockPromise) {
+    return wakeLockPromise;
+  }
+
+  wakeLockPromise = (async () => {
     try {
-      wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
-      wakeLockSentinel.addEventListener('release', () => {
-        wakeLockSentinel = null;
+      const sentinel = await (navigator as any).wakeLock.request('screen');
+      wakeLockSentinel = sentinel;
+      sentinel.addEventListener('release', () => {
+        if (wakeLockSentinel === sentinel) {
+          wakeLockSentinel = null;
+        }
       });
     } catch {
       // Wake Lock might not be allowed in some contexts
+    } finally {
+      wakeLockPromise = null;
     }
-  }
+  })();
+
+  return wakeLockPromise;
 }
 
-async function releaseWakeLock() {
+async function releaseWakeLock(): Promise<void> {
+  if (wakeLockPromise) {
+    try {
+      await wakeLockPromise;
+    } catch {
+      // ignore
+    }
+  }
   if (wakeLockSentinel) {
     try {
       await wakeLockSentinel.release();

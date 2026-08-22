@@ -67,8 +67,12 @@ export function JobDetailPage() {
         `Are you sure you want to delete "${activeJob.title}"? This will permanently delete the job and all associated resumes.`
       )
     ) {
-      await deleteJob(jobId);
-      navigate('/jobs');
+      try {
+        await deleteJob(jobId);
+        navigate('/jobs');
+      } catch (err: any) {
+        alert(err?.toString() || 'Failed to delete job');
+      }
     }
   };
 

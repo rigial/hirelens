@@ -5,7 +5,8 @@ import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
-import { formatBytes, formatEstimatedTime, cn } from '../../lib/utils';
+import { DownloadStatusFooter } from './DownloadStatusFooter';
+import { cn } from '../../lib/utils';
 import { ModelTier } from '../../types/settings';
 
 export function ModelSelector() {
@@ -109,29 +110,7 @@ export function ModelSelector() {
                         </span>
                       </div>
                       <Progress value={percent !== null ? percent : 5} />
-                      <div className="flex justify-between items-center text-[10px] text-slate-500">
-                        <span>
-                          {currentProgress
-                            ? `${formatBytes(currentProgress.downloaded)} / ${formatBytes(currentProgress.total)}`
-                            : 'Connecting...'}
-                        </span>
-                        <div className="flex items-center gap-1.5 font-medium">
-                          {currentProgress && currentProgress.etaSeconds !== undefined && currentProgress.etaSeconds !== null && currentProgress.etaSeconds > 0 && (
-                            <span className="text-indigo-600 font-semibold bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[9px]">
-                              {formatEstimatedTime(currentProgress.etaSeconds)}
-                            </span>
-                          )}
-                          <span>
-                            {currentProgress && currentProgress.speedBps > 0
-                              ? `${formatBytes(currentProgress.speedBps)}/s`
-                              : '—'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-[9px] text-slate-400 justify-center pt-0.5">
-                        <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Screen kept awake • Background download active</span>
-                      </div>
+                      <DownloadStatusFooter progress={currentProgress} sizeVariant="sm" />
                     </div>
                   )}
 

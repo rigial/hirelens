@@ -21,6 +21,10 @@ interface CandidateStore {
   deleteResume: (jobId: string, resumeId: string) => Promise<void>;
 }
 
+let candidatesReqSeq = 0;
+let candidateDetailReqSeq = 0;
+let processingStatusReqSeq = 0;
+
 export const useCandidateStore = create<CandidateStore>((set, get) => ({
   activeJobId: null,
   candidates: [],
@@ -30,29 +34,35 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   error: null,
 
   fetchCandidates: async (jobId: string) => {
+    const requestId = ++candidatesReqSeq;
     set({ activeJobId: jobId, isLoading: true, error: null });
     try {
       const candidates = await api.candidates.list(jobId);
-      if (get().activeJobId === jobId) {
+      if (get().activeJobId === jobId && requestId === candidatesReqSeq) {
         set({ candidates, isLoading: false });
       }
     } catch (err: any) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidates';
-      set({ error: msg, isLoading: false });
+      if (get().activeJobId === jobId && requestId === candidatesReqSeq) {
+        const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidates';
+        set({ error: msg, isLoading: false });
+      }
       throw err;
     }
   },
 
   fetchCandidateDetail: async (candidateId: string, jobId: string) => {
+    const requestId = ++candidateDetailReqSeq;
     set({ activeJobId: jobId, isLoading: true, error: null });
     try {
       const detail = await api.candidates.detail(candidateId, jobId);
-      if (get().activeJobId === jobId) {
+      if (get().activeJobId === jobId && requestId === candidateDetailReqSeq) {
         set({ activeCandidateDetail: detail, isLoading: false });
       }
     } catch (err: any) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidate detail';
-      set({ error: msg, isLoading: false });
+      if (get().activeJobId === jobId && requestId === candidateDetailReqSeq) {
+        const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidate detail';
+        set({ error: msg, isLoading: false });
+      }
       throw err;
     }
   },
@@ -139,9 +149,10 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   },
 
   fetchProcessingStatus: async (jobId: string) => {
+    const requestId = ++processingStatusReqSeq;
     try {
       const status = await api.resumes.getStatus(jobId);
-      if (get().activeJobId === jobId) {
+      if (get().activeJobId === jobId && requestId === processingStatusReqSeq) {
         set({ processingStatus: status });
       }
     } catch (err: any) {

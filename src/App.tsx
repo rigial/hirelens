@@ -15,18 +15,26 @@ import { api } from './lib/tauri';
 import { CandidateAnalysisCompleteEvent } from './types/processing';
 
 interface ModelDownloadProgressPayload {
-  model_id: string;
-  downloaded_bytes: number;
-  total_bytes: number;
-  speed_bps: number;
+  modelId?: string;
+  model_id?: string;
+  downloadedBytes?: number;
+  downloaded_bytes?: number;
+  totalBytes?: number;
+  total_bytes?: number;
+  speedBps?: number;
+  speed_bps?: number;
+  etaSeconds?: number;
+  eta_seconds?: number;
 }
 
 interface ModelDownloadCompletePayload {
-  model_id: string;
+  modelId?: string;
+  model_id?: string;
 }
 
 interface ModelDownloadErrorPayload {
-  model_id: string;
+  modelId?: string;
+  model_id?: string;
   error: string;
 }
 
@@ -58,12 +66,19 @@ export function App() {
     });
 
     listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
-      const { model_id, downloaded_bytes, total_bytes, speed_bps } = event.payload;
+      const payload = event.payload;
+      const modelId = payload.modelId ?? payload.model_id ?? '';
+      const downloadedBytes = payload.downloadedBytes ?? payload.downloaded_bytes ?? 0;
+      const totalBytes = payload.totalBytes ?? payload.total_bytes ?? 0;
+      const speedBps = payload.speedBps ?? payload.speed_bps ?? 0;
+      const etaSeconds = payload.etaSeconds ?? payload.eta_seconds;
+
       setDownloadProgress({
-        modelId: model_id,
-        downloaded: downloaded_bytes,
-        total: total_bytes,
-        speedBps: speed_bps,
+        modelId,
+        downloaded: downloadedBytes,
+        total: totalBytes,
+        speedBps,
+        etaSeconds,
       });
     }).then((unlisten) => {
       unlistenProgress = unlisten;
@@ -78,9 +93,10 @@ export function App() {
     });
 
     listen<ModelDownloadErrorPayload>('model-download-error', (event) => {
-      const { model_id, error } = event.payload;
+      const modelId = event.payload.modelId || event.payload.model_id || '';
+      const error = event.payload.error;
       setDownloadProgress(null);
-      setDownloadError({ modelId: model_id, message: error || 'Model download failed' });
+      setDownloadError({ modelId, message: error || 'Model download failed' });
       fetchModels();
     }).then((unlisten) => {
       unlistenError = unlisten;

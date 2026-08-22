@@ -7,11 +7,72 @@ export interface ModelDownloadProgress {
   downloaded: number;
   total: number;
   speedBps: number;
+  etaSeconds?: number;
 }
 
 export interface ModelDownloadError {
   modelId: string;
   message: string;
+}
+
+let wakeLockSentinel: any = null;
+let wakeLockPromise: Promise<void> | null = null;
+
+async function acquireWakeLock(): Promise<void> {
+  if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) {
+    return;
+  }
+  if (wakeLockSentinel) {
+    return;
+  }
+  if (wakeLockPromise) {
+    return wakeLockPromise;
+  }
+
+  wakeLockPromise = (async () => {
+    try {
+      const sentinel = await (navigator as any).wakeLock.request('screen');
+      wakeLockSentinel = sentinel;
+      sentinel.addEventListener('release', () => {
+        if (wakeLockSentinel === sentinel) {
+          wakeLockSentinel = null;
+        }
+      });
+    } catch {
+      // Wake Lock might not be allowed in some contexts
+    } finally {
+      wakeLockPromise = null;
+    }
+  })();
+
+  return wakeLockPromise;
+}
+
+async function releaseWakeLock(): Promise<void> {
+  if (wakeLockPromise) {
+    try {
+      await wakeLockPromise;
+    } catch {
+      // ignore
+    }
+  }
+  if (wakeLockSentinel) {
+    try {
+      await wakeLockSentinel.release();
+    } catch {
+      // ignore
+    }
+    wakeLockSentinel = null;
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    const isDownloading = useSettingsStore.getState().downloadProgress !== null;
+    if (document.visibilityState === 'visible' && isDownloading) {
+      acquireWakeLock();
+    }
+  });
 }
 
 interface SettingsStore {
@@ -81,9 +142,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   downloadModel: async (modelId: string) => {
     try {
       set({ downloadError: null });
+      acquireWakeLock();
       await api.models.download(modelId);
       await get().fetchModels();
     } catch (err: any) {
+      releaseWakeLock();
       const errMsg = err?.toString() || 'Failed to start model download';
       set({ downloadError: { modelId, message: errMsg }, error: errMsg });
     }
@@ -91,6 +154,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   cancelModelDownload: async (modelId: string) => {
     try {
+      releaseWakeLock();
       await api.models.cancelDownload(modelId);
       set({ downloadProgress: null, downloadError: null });
       await get().fetchModels();
@@ -109,10 +173,19 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   setDownloadProgress: (progress) => {
+    if (progress) {
+      acquireWakeLock();
+    } else {
+      releaseWakeLock();
+    }
     set({ downloadProgress: progress });
   },
 
   setDownloadError: (err) => {
+    if (err) {
+      releaseWakeLock();
+    }
     set({ downloadError: err });
   },
 }));
+

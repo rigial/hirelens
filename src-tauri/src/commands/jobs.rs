@@ -53,3 +53,38 @@ pub async fn archive_job(
     let db = state.db.lock().await;
     db_archive_job(&db, &job_id).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn delete_job(
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<(), String> {
+    let resume_paths = {
+        let db = state.db.lock().await;
+        crate::db::queries::jobs::delete_job_db(&db, &job_id).map_err(|e| e.to_string())?
+    };
+
+    let mut failed_paths = Vec::new();
+
+    for path in resume_paths {
+        if let Err(e) = tokio::fs::remove_file(&path).await {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                failed_paths.push(format!("{}: {}", path, e));
+            }
+        }
+    }
+
+    let job_dir = state.app_data_dir.join("resumes").join(&job_id);
+    if let Err(e) = tokio::fs::remove_dir_all(&job_dir).await {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            failed_paths.push(format!("{}: {}", job_dir.display(), e));
+        }
+    }
+
+    if !failed_paths.is_empty() {
+        return Err(format!("Failed to clean up resume files on disk: {}", failed_paths.join("; ")));
+    }
+
+    Ok(())
+}
+

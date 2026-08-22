@@ -1,6 +1,7 @@
-import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { ProcessingStatus } from '../../types/processing';
 import { Progress } from '../ui/Progress';
+import { formatEstimatedTime } from '../../lib/utils';
 
 interface ProcessingStatusBarProps {
   status: ProcessingStatus | null;
@@ -16,6 +17,10 @@ export function ProcessingStatusBar({ status }: ProcessingStatusBarProps) {
   const processed = status.completed + status.failed;
   const percentage = Math.round((processed / total) * 100);
 
+  // Approximate ~8 seconds per resume analysis on average with local model
+  const estimatedSeconds = activeRemaining * 8;
+  const etaFormatted = formatEstimatedTime(estimatedSeconds);
+
   return (
     <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3.5 space-y-2 mb-4 animate-in fade-in duration-300">
       <div className="flex items-center justify-between text-xs">
@@ -24,6 +29,11 @@ export function ProcessingStatusBar({ status }: ProcessingStatusBarProps) {
           <span>
             Analyzing resumes... ({processed} of {total} completed)
           </span>
+          {etaFormatted && (
+            <span className="text-[11px] font-medium text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full border border-indigo-200/60 inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" /> {etaFormatted}
+            </span>
+          )}
         </div>
         <span className="font-bold text-indigo-700">{percentage}%</span>
       </div>
@@ -39,8 +49,13 @@ export function ProcessingStatusBar({ status }: ProcessingStatusBarProps) {
             <AlertTriangle className="h-3 w-3" /> {status.failed} failed
           </span>
         )}
-        <span>{activeRemaining} in queue</span>
+        <span>
+          {status.inProgress > 0 && status.queued > 0
+            ? `${status.inProgress} in progress, ${status.queued} queued`
+            : `${activeRemaining} remaining`}
+        </span>
       </div>
     </div>
   );
 }
+

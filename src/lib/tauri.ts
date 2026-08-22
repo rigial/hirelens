@@ -11,6 +11,7 @@ export const api = {
     create: (payload: CreateJobPayload) => invoke<Job>('create_job', { payload }),
     update: (jobId: string, payload: UpdateJobPayload) => invoke<Job>('update_job', { jobId, payload }),
     archive: (jobId: string) => invoke<void>('archive_job', { jobId }),
+    delete: (jobId: string) => invoke<void>('delete_job', { jobId }),
   },
   candidates: {
     list: (jobId: string) => invoke<CandidateWithAnalysis[]>('get_candidates', { jobId }),
@@ -20,6 +21,7 @@ export const api = {
       invoke<void>('update_shortlist_status', { jobId, candidateId, status, notes: notes || null }),
     retry: (resumeId: string) => invoke<void>('retry_resume', { resumeId }),
     reanalyzeAll: (jobId: string) => invoke<void>('reanalyze_job_candidates', { jobId }),
+    deleteResume: (resumeId: string) => invoke<void>('delete_resume', { resumeId }),
     searchSemantic: (jobId: string, query: string, limit?: number) =>
       invoke<[string, number][]>('search_candidates_semantic', { jobId, query, limit: limit || null }),
   },

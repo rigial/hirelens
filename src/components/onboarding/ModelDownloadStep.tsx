@@ -4,9 +4,10 @@ import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Progress } from '../ui/Progress';
+import { DownloadStatusFooter } from '../settings/DownloadStatusFooter';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { MODEL_TIER_CONFIG } from '../../lib/constants';
-import { formatBytes, cn } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { ModelTier } from '../../types/settings';
 
 interface ModelDownloadStepProps {
@@ -209,18 +210,11 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
               value={percent !== null ? percent : 5}
             />
 
-            <div className="flex justify-between items-center text-[11px] text-slate-500">
-              <span>
-                {currentDownloadForSelected
-                  ? `${formatBytes(currentDownloadForSelected.downloaded)} / ${formatBytes(currentDownloadForSelected.total)}`
-                  : 'Preparing stream...'}
-              </span>
-              <span>
-                {currentDownloadForSelected && currentDownloadForSelected.speedBps > 0
-                  ? `${formatBytes(currentDownloadForSelected.speedBps)}/s`
-                  : 'Connecting...'}
-              </span>
-            </div>
+            <DownloadStatusFooter
+              progress={currentDownloadForSelected}
+              statusSubtitle="Screen kept awake • Continues in background"
+              sizeVariant="md"
+            />
 
             <div className="pt-1">
               <Button

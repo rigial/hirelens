@@ -110,6 +110,7 @@ pub fn run() {
             commands::jobs::get_job,
             commands::jobs::update_job,
             commands::jobs::archive_job,
+            commands::jobs::delete_job,
             commands::processing::upload_resumes,
             commands::processing::check_duplicate_resumes,
             commands::processing::get_processing_status,
@@ -119,6 +120,7 @@ pub fn run() {
             commands::candidates::retry_resume,
             commands::candidates::reanalyze_job_candidates,
             commands::candidates::search_candidates_semantic,
+            commands::candidates::delete_resume,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

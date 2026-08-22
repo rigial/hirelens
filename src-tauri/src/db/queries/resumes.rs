@@ -167,6 +167,46 @@ pub fn find_resume_by_name_and_size(
     }
 }
 
+/// Deletes a resume record from SQLite and cleans up associated candidate if orphan.
+/// Returns the deleted resume's local file path if found.
+pub fn delete_resume_db(conn: &Connection, resume_id: &str) -> Result<Option<String>> {
+    use rusqlite::OptionalExtension;
+
+    let tx = conn.unchecked_transaction()?;
+
+    let info: Option<(String, Option<String>, String)> = {
+        let mut stmt = tx.prepare("SELECT file_path, candidate_id, job_id FROM resumes WHERE id = ?1")?;
+        stmt.query_row(params![resume_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        }).optional()?
+    };
+
+    if let Some((file_path, candidate_id, _job_id)) = info {
+        tx.execute("DELETE FROM processing_queue WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM embeddings WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM candidate_analysis WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM resumes WHERE id = ?1", params![resume_id])?;
+
+        if let Some(ref cid) = candidate_id {
+            let other_resumes: i64 = tx.query_row(
+                "SELECT COUNT(*) FROM resumes WHERE candidate_id = ?1",
+                params![cid],
+                |r| r.get(0),
+            )?;
+
+            if other_resumes == 0 {
+                tx.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid])?;
+                tx.execute("DELETE FROM candidates WHERE id = ?1", params![cid])?;
+            }
+        }
+
+        tx.commit()?;
+        Ok(Some(file_path))
+    } else {
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -221,4 +261,28 @@ pub mod tests {
         let not_found_name = find_resume_by_name_and_size(&conn, "job-1", "jane_doe_resume.pdf", 102400).unwrap();
         assert!(not_found_name.is_none());
     }
+
+    #[test]
+    fn test_delete_resume_db() {
+        let conn = setup_test_db();
+
+        let resume = create_resume(
+            &conn,
+            "res-del-1",
+            "job-1",
+            "test_delete.pdf",
+            "/tmp/test_delete.pdf",
+            "pdf",
+            50000,
+        ).unwrap();
+
+        assert_eq!(resume.id, "res-del-1");
+
+        let deleted_path = delete_resume_db(&conn, "res-del-1").unwrap();
+        assert_eq!(deleted_path, Some("/tmp/test_delete.pdf".to_string()));
+
+        let lookup = get_resume(&conn, "res-del-1");
+        assert!(lookup.is_err());
+    }
 }
+

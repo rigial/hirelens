@@ -115,3 +115,26 @@ pub async fn search_candidates_semantic(
     ).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn delete_resume(
+    state: State<'_, AppState>,
+    resume_id: String,
+) -> Result<(), String> {
+    let file_path = {
+        let db = state.db.lock().await;
+        crate::db::queries::resumes::delete_resume_db(&db, &resume_id)
+            .map_err(|e| e.to_string())?
+    };
+
+    if let Some(path) = file_path {
+        if let Err(e) = tokio::fs::remove_file(&path).await {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(format!("Failed to remove resume file {}: {}", path, e));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+

@@ -73,6 +73,7 @@ pub async fn download_model(
                 ).ok();
 
                 app_clone.emit("model-download-complete", serde_json::json!({
+                    "modelId": model_clone.id,
                     "model_id": model_clone.id
                 })).ok();
             }
@@ -85,6 +86,7 @@ pub async fn download_model(
                 let is_cancellation = err.to_lowercase().contains("cancel");
                 if !is_cancellation {
                     app_clone.emit("model-download-error", serde_json::json!({
+                        "modelId": model_clone.id,
                         "model_id": model_clone.id,
                         "error": err
                     })).ok();

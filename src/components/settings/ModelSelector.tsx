@@ -5,7 +5,8 @@ import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
-import { formatBytes, cn } from '../../lib/utils';
+import { DownloadStatusFooter } from './DownloadStatusFooter';
+import { cn } from '../../lib/utils';
 import { ModelTier } from '../../types/settings';
 
 export function ModelSelector() {
@@ -109,18 +110,7 @@ export function ModelSelector() {
                         </span>
                       </div>
                       <Progress value={percent !== null ? percent : 5} />
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span>
-                          {currentProgress
-                            ? `${formatBytes(currentProgress.downloaded)} / ${formatBytes(currentProgress.total)}`
-                            : 'Connecting...'}
-                        </span>
-                        <span>
-                          {currentProgress && currentProgress.speedBps > 0
-                            ? `${formatBytes(currentProgress.speedBps)}/s`
-                            : '—'}
-                        </span>
-                      </div>
+                      <DownloadStatusFooter progress={currentProgress} sizeVariant="sm" />
                     </div>
                   )}
 

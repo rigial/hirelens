@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sysinfo::System;
 use tauri::{AppHandle, Emitter};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
+use crate::llm::keepawake::KeepAwakeGuard;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -35,11 +37,13 @@ pub struct Model {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelDownloadProgress {
     pub model_id: String,
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub speed_bps: u64,
+    pub eta_seconds: Option<u64>,
 }
 
 pub fn detect_system_info() -> SystemInfo {
@@ -113,7 +117,6 @@ pub fn compute_sha256(bytes: &[u8]) -> String {
 
 /// Read a file from disk asynchronously and verify its SHA-256 hash.
 pub async fn verify_file_sha256<P: AsRef<Path>>(path: P, expected_hash: &str) -> Result<bool, String> {
-    use tokio::io::AsyncReadExt;
     let mut file = tokio::fs::File::open(path.as_ref())
         .await
         .map_err(|e| format!("Failed to open file for verification: {}", e))?;
@@ -135,103 +138,246 @@ pub async fn verify_file_sha256<P: AsRef<Path>>(path: P, expected_hash: &str) ->
     Ok(calculated_hash.eq_ignore_ascii_case(expected_hash.trim()))
 }
 
+/// Performs a robust, resumable model download with speed calculation, ETA estimation,
+/// buffered I/O, screen wake-lock, and atomic integrity verification.
 pub async fn perform_model_download(
     app: AppHandle,
     models_dir: PathBuf,
     model: Model,
     cancel_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
-    std::fs::create_dir_all(&models_dir).map_err(|e| e.to_string())?;
+    // 1. Acquire OS power assertion to keep screen and system awake during download
+    let _keep_awake = KeepAwakeGuard::new(&format!("Downloading AI model {}", model.display_name));
+
+    tokio::fs::create_dir_all(&models_dir)
+        .await
+        .map_err(|e| format!("Failed to create models directory: {}", e))?;
+
     let target_path = models_dir.join(&model.file_name);
+    let part_path = models_dir.join(format!("{}.part", model.file_name));
 
+    // HTTP client without aggressive total timeout (uses 30s connection & read timeout)
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(600))
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .read_timeout(std::time::Duration::from_secs(30))
+        .tcp_keepalive(std::time::Duration::from_secs(15))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
-    let response = client.get(&model.download_url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to initiate download: {}", e))?;
+    let mut attempts = 0;
+    const MAX_RETRIES: usize = 3;
+    const CHUNK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download model {}: HTTP error {}",
-            model.id,
-            response.status()
-        ));
-    }
-
-    let total_size = response.content_length().unwrap_or(model.size_bytes as u64);
-    let mut downloaded: u64 = 0;
-    let mut stream = response.bytes_stream();
-    let mut last_emit = std::time::Instant::now();
-    let mut bytes_since_last_emit: u64 = 0;
-    let mut hasher = Sha256::new();
-
-    use tokio::io::AsyncWriteExt;
-    let mut file = tokio::fs::File::create(&target_path)
-        .await
-        .map_err(|e| format!("Failed to create model file: {}", e))?;
-
-    while let Some(chunk_result) = stream.next().await {
+    loop {
         if cancel_flag.load(Ordering::Relaxed) {
-            drop(file);
-            tokio::fs::remove_file(&target_path).await.ok();
             return Err("Download cancelled by user".to_string());
         }
 
-        let chunk = match chunk_result {
-            Ok(c) => c,
-            Err(e) => {
-                drop(file);
-                tokio::fs::remove_file(&target_path).await.ok();
-                return Err(format!("Download stream error: {}", e));
+        attempts += 1;
+
+        // Check if partial file exists for resume support
+        let mut existing_bytes: u64 = 0;
+        if let Ok(meta) = tokio::fs::metadata(&part_path).await {
+            existing_bytes = meta.len();
+        }
+
+        let mut req = client.get(&model.download_url);
+        if existing_bytes > 0 {
+            req = req.header("Range", format!("bytes={}-", existing_bytes));
+        }
+
+        let response = match req.send().await {
+            Ok(resp) => resp,
+            Err(err) => {
+                if attempts <= MAX_RETRIES && !cancel_flag.load(Ordering::Relaxed) {
+                    tokio::time::sleep(std::time::Duration::from_secs(2 * attempts as u64)).await;
+                    continue;
+                }
+                return Err(format!("Failed to connect to model download URL: {}", err));
             }
         };
 
-        if let Err(e) = file.write_all(&chunk).await {
-            drop(file);
-            tokio::fs::remove_file(&target_path).await.ok();
-            return Err(format!("File write error: {}", e));
-        }
-
-        hasher.update(&chunk);
-        downloaded += chunk.len() as u64;
-        bytes_since_last_emit += chunk.len() as u64;
-
-        if last_emit.elapsed().as_millis() >= 250 {
-            let elapsed_sec = last_emit.elapsed().as_secs_f64();
-            let speed_bps = if elapsed_sec > 0.0 { (bytes_since_last_emit as f64 / elapsed_sec) as u64 } else { 0 };
-
-            let payload = ModelDownloadProgress {
-                model_id: model.id.clone(),
-                downloaded_bytes: downloaded,
-                total_bytes: total_size,
-                speed_bps,
+        let status = response.status();
+        let (file, mut downloaded, total_size) = if status == reqwest::StatusCode::PARTIAL_CONTENT {
+            // Server supports Range resume
+            let content_len = response.content_length();
+            let total = match content_len {
+                Some(len) if len > 0 => existing_bytes + len,
+                _ => {
+                    if model.size_bytes > 0 {
+                        model.size_bytes as u64
+                    } else {
+                        existing_bytes
+                    }
+                }
             };
-            app.emit("model-download-progress", payload).ok();
+            let f = tokio::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&part_path)
+                .await
+                .map_err(|e| format!("Failed to open partial download file: {}", e))?;
+            (f, existing_bytes, total)
+        } else if status == reqwest::StatusCode::OK {
+            // Server sent full content (reset to 0)
+            let total = response.content_length().unwrap_or(model.size_bytes as u64);
+            let f = tokio::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(&part_path)
+                .await
+                .map_err(|e| format!("Failed to create download file: {}", e))?;
+            (f, 0u64, total)
+        } else if status == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
+            // Range out of bounds, reset partial file and restart
+            tokio::fs::remove_file(&part_path).await.ok();
+            if attempts <= MAX_RETRIES {
+                continue;
+            }
+            return Err(format!("Download range error: HTTP {}", status));
+        } else {
+            return Err(format!("Failed to download model {}: HTTP error {}", model.id, status));
+        };
 
-            last_emit = std::time::Instant::now();
-            bytes_since_last_emit = 0;
+        let mut writer = BufWriter::with_capacity(262_144, file); // 256KB buffer
+        let mut stream = response.bytes_stream();
+        let mut last_emit = std::time::Instant::now();
+        let mut bytes_since_last_emit: u64 = 0;
+        let mut smoothed_speed: f64 = 0.0;
+        let mut stream_error = false;
+
+        loop {
+            let chunk_opt = match tokio::time::timeout(CHUNK_TIMEOUT, stream.next()).await {
+                Ok(Some(chunk_res)) => chunk_res,
+                Ok(None) => break,
+                Err(_timeout) => {
+                    if cancel_flag.load(Ordering::Relaxed) {
+                        writer.flush().await.ok();
+                        drop(writer);
+                        return Err("Download cancelled by user".to_string());
+                    }
+                    stream_error = true;
+                    eprintln!("Download chunk stream timed out after 30s");
+                    break;
+                }
+            };
+
+            if cancel_flag.load(Ordering::Relaxed) {
+                writer.flush().await.ok();
+                drop(writer);
+                return Err("Download cancelled by user".to_string());
+            }
+
+            let chunk = match chunk_opt {
+                Ok(c) => c,
+                Err(e) => {
+                    stream_error = true;
+                    eprintln!("Download chunk stream interrupted: {}", e);
+                    break;
+                }
+            };
+
+            if let Err(e) = writer.write_all(&chunk).await {
+                writer.flush().await.ok();
+                drop(writer);
+                return Err(format!("File write error: {}", e));
+            }
+
+            let chunk_len = chunk.len() as u64;
+            downloaded += chunk_len;
+            bytes_since_last_emit += chunk_len;
+
+            let elapsed_millis = last_emit.elapsed().as_millis();
+            if elapsed_millis >= 250 {
+                let elapsed_sec = last_emit.elapsed().as_secs_f64();
+                let current_instant_speed = if elapsed_sec > 0.0 {
+                    bytes_since_last_emit as f64 / elapsed_sec
+                } else {
+                    0.0
+                };
+
+                // Exponential moving average for smooth speed and stable ETA
+                if smoothed_speed == 0.0 {
+                    smoothed_speed = current_instant_speed;
+                } else {
+                    smoothed_speed = (smoothed_speed * 0.7) + (current_instant_speed * 0.3);
+                }
+
+                let speed_bps = smoothed_speed.round() as u64;
+                let eta_seconds = if speed_bps > 0 && total_size > downloaded {
+                    Some((total_size - downloaded) / speed_bps)
+                } else if downloaded >= total_size {
+                    Some(0)
+                } else {
+                    None
+                };
+
+                let payload = ModelDownloadProgress {
+                    model_id: model.id.clone(),
+                    downloaded_bytes: downloaded,
+                    total_bytes: total_size,
+                    speed_bps,
+                    eta_seconds,
+                };
+                app.emit("model-download-progress", payload).ok();
+
+                last_emit = std::time::Instant::now();
+                bytes_since_last_emit = 0;
+            }
+        }
+
+        if let Err(e) = writer.flush().await {
+            return Err(format!("Failed to flush model file buffer: {}", e));
+        }
+        drop(writer);
+
+        if stream_error {
+            if attempts <= MAX_RETRIES && !cancel_flag.load(Ordering::Relaxed) {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                continue;
+            }
+            return Err("Download connection was interrupted. Please retry.".to_string());
+        }
+
+        // Download stream completed successfully
+        break;
+    }
+
+    // Final Progress Emit (100%)
+    let final_size = tokio::fs::metadata(&part_path)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(model.size_bytes as u64);
+
+    app.emit("model-download-progress", ModelDownloadProgress {
+        model_id: model.id.clone(),
+        downloaded_bytes: final_size,
+        total_bytes: final_size,
+        speed_bps: 0,
+        eta_seconds: Some(0),
+    }).ok();
+
+    // 2. SHA-256 Integrity Verification on the .part file before promoting
+    let expected_hash = model.sha256.trim().to_lowercase();
+    if !expected_hash.is_empty() {
+        let is_valid = verify_file_sha256(&part_path, &expected_hash)
+            .await
+            .map_err(|e| format!("Verification error: {}", e))?;
+
+        if !is_valid {
+            tokio::fs::remove_file(&part_path).await.ok();
+            return Err(format!(
+                "Integrity check failed for model {}: SHA-256 checksum mismatch",
+                model.id
+            ));
         }
     }
 
-    file.flush().await.map_err(|e| format!("Failed to flush model file: {}", e))?;
-    drop(file);
-
-    // SHA-256 Verification against manifest hash
-    let calculated_hash = format!("{:x}", hasher.finalize());
-    let expected_hash = model.sha256.trim().to_lowercase();
-    let actual_hash = calculated_hash.to_lowercase();
-
-    if !expected_hash.is_empty() && actual_hash != expected_hash {
-        tokio::fs::remove_file(&target_path).await.ok();
-        return Err(format!(
-            "Integrity check failed for model {}: SHA-256 checksum mismatch (expected {}, got {})",
-            model.id, expected_hash, actual_hash
-        ));
-    }
+    // 3. Atomically rename .part file to final model destination
+    tokio::fs::rename(&part_path, &target_path)
+        .await
+        .map_err(|e| format!("Failed to finalize model file: {}", e))?;
 
     Ok(())
 }
@@ -245,7 +391,6 @@ mod tests {
     fn test_compute_sha256() {
         let data = b"Hello HireLens SHA256 Verification";
         let hash = compute_sha256(data);
-        // Expected SHA-256 hash for b"Hello HireLens SHA256 Verification"
         assert_eq!(
             hash,
             "df3383fb179bab3b999705ba6ca4399c65fb56431e043fc9c6a406728f77c21c"
@@ -321,5 +466,21 @@ mod tests {
 
         std::fs::remove_file(&temp_db).ok();
     }
-}
 
+    #[test]
+    fn test_model_download_progress_serialization() {
+        let progress = ModelDownloadProgress {
+            model_id: "qwen-2.5-3b".to_string(),
+            downloaded_bytes: 1048576,
+            total_bytes: 2097152,
+            speed_bps: 524288,
+            eta_seconds: Some(2),
+        };
+        let json_str = serde_json::to_string(&progress).unwrap();
+        assert!(json_str.contains("\"modelId\":\"qwen-2.5-3b\""));
+        assert!(json_str.contains("\"downloadedBytes\":1048576"));
+        assert!(json_str.contains("\"totalBytes\":2097152"));
+        assert!(json_str.contains("\"speedBps\":524288"));
+        assert!(json_str.contains("\"etaSeconds\":2"));
+    }
+}

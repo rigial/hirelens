@@ -1,9 +1,11 @@
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { MapPin, Users, CheckCircle, Clock, Calendar, Trash2, Loader2 } from 'lucide-react';
 import { JobSummary } from '../../types/job';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { formatDate } from '../../lib/utils';
+import { useJobStore } from '../../stores/useJobStore';
 
 interface JobCardProps {
   job: JobSummary;
@@ -11,6 +13,26 @@ interface JobCardProps {
 
 export function JobCard({ job }: JobCardProps) {
   const navigate = useNavigate();
+  const { deleteJob } = useJobStore();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDeleting) return;
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${job.title}"? This will permanently remove the job opening and all ${job.candidateCount} uploaded resumes.`
+      )
+    ) {
+      setIsDeleting(true);
+      try {
+        await deleteJob(job.id);
+      } catch (err: any) {
+        alert(err?.toString() || 'Failed to delete job');
+        setIsDeleting(false);
+      }
+    }
+  };
 
   return (
     <Card
@@ -19,11 +41,11 @@ export function JobCard({ job }: JobCardProps) {
     >
       <CardContent className="p-5 space-y-4">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-semibold text-slate-900 text-base group-hover:text-indigo-600">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-slate-900 text-base group-hover:text-indigo-600 truncate">
               {job.title}
             </h3>
-            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
               {job.location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
@@ -41,9 +63,24 @@ export function JobCard({ job }: JobCardProps) {
             </div>
           </div>
 
-          <Badge variant={job.status === 'active' ? 'success' : 'secondary'} className="text-[11px] capitalize">
-            {job.status}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Badge variant={job.status === 'active' ? 'success' : 'secondary'} className="text-[11px] capitalize">
+              {job.status}
+            </Badge>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              title="Delete Job Opening"
+              className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Stats Row */}
@@ -80,3 +117,4 @@ export function JobCard({ job }: JobCardProps) {
     </Card>
   );
 }
+

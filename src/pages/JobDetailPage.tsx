@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Edit,
   Archive,
+  Trash2,
   MapPin,
   Briefcase,
   Clock,
@@ -14,6 +15,7 @@ import {
 import { useJobStore } from '../stores/useJobStore';
 import { useCandidateStore } from '../stores/useCandidateStore';
 import { DropZone } from '../components/processing/DropZone';
+import { FullScreenDropZone } from '../components/processing/FullScreenDropZone';
 import { ProcessingStatusBar } from '../components/processing/ProcessingStatusBar';
 import { CandidateList } from '../components/candidates/CandidateList';
 import { Card, CardContent } from '../components/ui/Card';
@@ -30,7 +32,7 @@ import { api } from '../lib/tauri';
 export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const { activeJob, fetchJob, archiveJob } = useJobStore();
+  const { activeJob, fetchJob, archiveJob, deleteJob } = useJobStore();
   const {
     candidates,
     processingStatus,
@@ -55,6 +57,22 @@ export function JobDetailPage() {
     if (window.confirm('Are you sure you want to archive this job opening?')) {
       await archiveJob(jobId);
       navigate('/jobs');
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!jobId || !activeJob) return;
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${activeJob.title}"? This will permanently delete the job and all associated resumes.`
+      )
+    ) {
+      try {
+        await deleteJob(jobId);
+        navigate('/jobs');
+      } catch (err: any) {
+        alert(err?.toString() || 'Failed to delete job');
+      }
     }
   };
 
@@ -111,10 +129,17 @@ export function JobDetailPage() {
                     </button>
                     <button
                       onClick={handleArchive}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                      className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50"
                       title="Archive Job"
                     >
                       <Archive className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={handleDeleteJob}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                      title="Delete Job Opening"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -240,6 +265,19 @@ export function JobDetailPage() {
           />
         </div>
       </div>
+
+      {/* Full-Screen Drag-and-Drop Drop Overlay */}
+      {jobId && (
+        <FullScreenDropZone
+          jobId={jobId}
+          jobTitle={activeJob.title}
+          onUploaded={() => {
+            fetchCandidates(jobId);
+            fetchProcessingStatus(jobId);
+          }}
+        />
+      )}
     </div>
   );
 }
+

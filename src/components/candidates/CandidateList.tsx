@@ -63,7 +63,7 @@ export function CandidateList({ candidates, jobId, onUpdateStatus }: CandidateLi
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white cursor-pointer"
             >
               <option value="all" className="bg-white dark:bg-neutral-900">All Statuses ({candidates.length})</option>
               <option value="pending" className="bg-white dark:bg-neutral-900">Pending Review</option>
@@ -78,7 +78,7 @@ export function CandidateList({ candidates, jobId, onUpdateStatus }: CandidateLi
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white cursor-pointer"
             >
               <option value="score" className="bg-white dark:bg-neutral-900">Ranked by Score</option>
               <option value="name" className="bg-white dark:bg-neutral-900">Sort by Name</option>

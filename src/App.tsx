@@ -70,40 +70,37 @@ export function App() {
       setOnboardingCompleted(false);
     });
 
-    // Tauri Event Listeners
-    let unlistenAnalysis: (() => void) | undefined;
-    let unlistenFailed: (() => void) | undefined;
-    let unlistenQueued: (() => void) | undefined;
-    let unlistenStarted: (() => void) | undefined;
-    let unlistenProgress: (() => void) | undefined;
-    let unlistenComplete: (() => void) | undefined;
-    let unlistenError: (() => void) | undefined;
+    // Tauri Event Listeners with safe unmount cleanup tracking
+    let isMounted = true;
+    const unlisteners: (() => void)[] = [];
 
-    listen<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
+    const registerListener = <T,>(event: string, handler: (e: { payload: T }) => void) => {
+      listen<T>(event, handler).then((unlisten) => {
+        if (!isMounted) {
+          unlisten();
+        } else {
+          unlisteners.push(unlisten);
+        }
+      });
+    };
+
+    registerListener<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
       handleAnalysisComplete(event.payload);
-    }).then((unlisten) => {
-      unlistenAnalysis = unlisten;
     });
 
-    listen<ResumeFailedPayload>('resume-processing-failed', (event) => {
+    registerListener<ResumeFailedPayload>('resume-processing-failed', (event) => {
       handleAnalysisFailed(event.payload);
-    }).then((unlisten) => {
-      unlistenFailed = unlisten;
     });
 
-    listen<ResumeQueuePayload>('resume-queued', (event) => {
+    registerListener<ResumeQueuePayload>('resume-queued', (event) => {
       handleProcessingUpdate(event.payload.job_id);
-    }).then((unlisten) => {
-      unlistenQueued = unlisten;
     });
 
-    listen<ResumeQueuePayload>('resume-processing-started', (event) => {
+    registerListener<ResumeQueuePayload>('resume-processing-started', (event) => {
       handleProcessingUpdate(event.payload.job_id);
-    }).then((unlisten) => {
-      unlistenStarted = unlisten;
     });
 
-    listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
+    registerListener<ModelDownloadProgressPayload>('model-download-progress', (event) => {
       const payload = event.payload;
       const modelId = payload.modelId ?? payload.model_id ?? '';
       const downloadedBytes = payload.downloadedBytes ?? payload.downloaded_bytes ?? 0;
@@ -118,37 +115,26 @@ export function App() {
         speedBps,
         etaSeconds,
       });
-    }).then((unlisten) => {
-      unlistenProgress = unlisten;
     });
 
-    listen<ModelDownloadCompletePayload>('model-download-complete', () => {
+    registerListener<ModelDownloadCompletePayload>('model-download-complete', () => {
       setDownloadProgress(null);
       setDownloadError(null);
       fetchModels();
-    }).then((unlisten) => {
-      unlistenComplete = unlisten;
     });
 
-    listen<ModelDownloadErrorPayload>('model-download-error', (event) => {
+    registerListener<ModelDownloadErrorPayload>('model-download-error', (event) => {
       const modelId = event.payload.modelId || event.payload.model_id || '';
       const error = event.payload.error;
       setDownloadProgress(null);
       setDownloadError({ modelId, message: error || 'Model download failed' });
       fetchModels();
-    }).then((unlisten) => {
-      unlistenError = unlisten;
     });
 
     return () => {
+      isMounted = false;
       cleanupTheme();
-      if (unlistenAnalysis) unlistenAnalysis();
-      if (unlistenFailed) unlistenFailed();
-      if (unlistenQueued) unlistenQueued();
-      if (unlistenStarted) unlistenStarted();
-      if (unlistenProgress) unlistenProgress();
-      if (unlistenComplete) unlistenComplete();
-      if (unlistenError) unlistenError();
+      unlisteners.forEach((fn) => fn());
     };
   }, [handleAnalysisComplete, handleAnalysisFailed, handleProcessingUpdate, setDownloadProgress, setDownloadError, fetchModels]);
 

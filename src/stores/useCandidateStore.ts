@@ -4,6 +4,7 @@ import { ProcessingStatus, CandidateAnalysisCompleteEvent } from '../types/proce
 import { api } from '../lib/tauri';
 
 interface CandidateStore {
+  activeJobId: string | null;
   candidates: CandidateWithAnalysis[];
   activeCandidateDetail: CandidateDetail | null;
   processingStatus: ProcessingStatus | null;
@@ -21,6 +22,7 @@ interface CandidateStore {
 }
 
 export const useCandidateStore = create<CandidateStore>((set, get) => ({
+  activeJobId: null,
   candidates: [],
   activeCandidateDetail: null,
   processingStatus: null,
@@ -28,10 +30,12 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   error: null,
 
   fetchCandidates: async (jobId: string) => {
-    set({ isLoading: true, error: null });
+    set({ activeJobId: jobId, isLoading: true, error: null });
     try {
       const candidates = await api.candidates.list(jobId);
-      set({ candidates, isLoading: false });
+      if (get().activeJobId === jobId) {
+        set({ candidates, isLoading: false });
+      }
     } catch (err: any) {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidates';
       set({ error: msg, isLoading: false });
@@ -40,10 +44,12 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   },
 
   fetchCandidateDetail: async (candidateId: string, jobId: string) => {
-    set({ isLoading: true, error: null });
+    set({ activeJobId: jobId, isLoading: true, error: null });
     try {
       const detail = await api.candidates.detail(candidateId, jobId);
-      set({ activeCandidateDetail: detail, isLoading: false });
+      if (get().activeJobId === jobId) {
+        set({ activeCandidateDetail: detail, isLoading: false });
+      }
     } catch (err: any) {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch candidate detail';
       set({ error: msg, isLoading: false });
@@ -70,7 +76,7 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
             : state.activeCandidateDetail,
       }));
     } catch (err: any) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update shortlist status';
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update candidate status';
       set({ error: msg });
       throw err;
     }
@@ -110,25 +116,34 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   },
 
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => {
-    // Trigger candidate list refresh & status update
-    get().fetchCandidates(event.job_id).catch(() => {});
-    get().fetchProcessingStatus(event.job_id).catch(() => {});
+    // Only refresh when event job_id matches currently viewed job opening
+    if (get().activeJobId === event.job_id) {
+      get().fetchCandidates(event.job_id).catch(() => {});
+      get().fetchProcessingStatus(event.job_id).catch(() => {});
+    }
   },
 
   handleAnalysisFailed: (event: { job_id: string; resume_id: string; error: string }) => {
-    // Trigger candidate list refresh & status update on failure
-    get().fetchCandidates(event.job_id).catch(() => {});
-    get().fetchProcessingStatus(event.job_id).catch(() => {});
+    // Only refresh when event job_id matches currently viewed job opening
+    if (get().activeJobId === event.job_id) {
+      get().fetchCandidates(event.job_id).catch(() => {});
+      get().fetchProcessingStatus(event.job_id).catch(() => {});
+    }
   },
 
   handleProcessingUpdate: (jobId: string) => {
-    get().fetchProcessingStatus(jobId).catch(() => {});
+    // Only refresh when jobId matches currently viewed job opening
+    if (get().activeJobId === jobId) {
+      get().fetchProcessingStatus(jobId).catch(() => {});
+    }
   },
 
   fetchProcessingStatus: async (jobId: string) => {
     try {
       const status = await api.resumes.getStatus(jobId);
-      set({ processingStatus: status });
+      if (get().activeJobId === jobId) {
+        set({ processingStatus: status });
+      }
     } catch (err: any) {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to fetch processing status';
       console.error('Failed to fetch processing status:', msg);
@@ -136,4 +151,3 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
     }
   },
 }));
-

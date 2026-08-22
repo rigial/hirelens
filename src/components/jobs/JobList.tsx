@@ -43,7 +43,7 @@ export function JobList({ jobs }: JobListProps) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="h-8 bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium focus:outline-none cursor-pointer"
+              className="h-8 bg-transparent text-xs text-neutral-800 dark:text-neutral-200 font-medium rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white cursor-pointer"
             >
               <option value="all" className="bg-white dark:bg-neutral-900">All</option>
               <option value="active" className="bg-white dark:bg-neutral-900">Active</option>

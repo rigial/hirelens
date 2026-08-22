@@ -253,7 +253,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
             <button
               type="button"
               onClick={handleSkipForNow}
-              className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 underline pt-1 cursor-pointer"
+              className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white underline pt-1 cursor-pointer"
             >
               Skip setup and configure models later in Settings
             </button>

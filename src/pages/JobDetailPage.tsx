@@ -58,9 +58,15 @@ export function JobDetailPage() {
     const isProcessing = processingStatus && (processingStatus.inProgress > 0 || processingStatus.queued > 0);
     if (!isProcessing) return;
 
-    const interval = setInterval(() => {
-      fetchProcessingStatus(jobId);
-      fetchCandidates(jobId);
+    const interval = setInterval(async () => {
+      try {
+        await Promise.all([
+          fetchProcessingStatus(jobId),
+          fetchCandidates(jobId),
+        ]);
+      } catch (err) {
+        console.warn('Failed to poll candidate processing updates:', err);
+      }
     }, 2500);
 
     return () => clearInterval(interval);

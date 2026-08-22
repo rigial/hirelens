@@ -47,7 +47,7 @@ export function ConcurrencySettings() {
             className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-neutral-900 dark:accent-white"
           />
 
-          <div className="flex justify-between text-[11px] text-neutral-400 dark:text-neutral-500">
+          <div className="flex justify-between text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">
             <span>1 (Conservative)</span>
             <span>Recommended: {systemInfo?.hasGpu ? '4 (GPU)' : '2 (CPU)'}</span>
             <span>8 (Maximum)</span>

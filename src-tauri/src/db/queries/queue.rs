@@ -24,18 +24,22 @@ pub struct QueueItem {
 }
 
 pub fn enqueue_resume(conn: &Connection, job_id: &str, resume_id: &str) -> Result<String> {
+    let tx = conn.unchecked_transaction()?;
+
     // Remove previous queue entry for this resume to prevent stale duplicates on retries/re-scoring
-    conn.execute(
+    tx.execute(
         "DELETE FROM processing_queue WHERE resume_id = ?1",
         params![resume_id],
     )?;
 
     let queue_id = Uuid::new_v4().to_string();
-    conn.execute(
+    tx.execute(
         "INSERT INTO processing_queue (id, job_id, resume_id, priority, attempts, max_attempts, status, queued_at)
          VALUES (?1, ?2, ?3, 0, 0, 3, 'queued', CURRENT_TIMESTAMP)",
         params![queue_id, job_id, resume_id],
     )?;
+
+    tx.commit()?;
     Ok(queue_id)
 }
 

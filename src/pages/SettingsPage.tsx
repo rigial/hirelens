@@ -128,15 +128,24 @@ export function SettingsPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5" role="radiogroup" aria-label="Appearance & Theme">
           {themeOptions.map((opt) => {
             const isSelected = theme === opt.value;
             const Icon = opt.icon;
             return (
               <Card
                 key={opt.value}
+                role="radio"
+                aria-checked={isSelected}
+                tabIndex={0}
                 onClick={() => setTheme(opt.value)}
-                className={`cursor-pointer transition-all border-2 ${
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setTheme(opt.value);
+                  }
+                }}
+                className={`cursor-pointer transition-all border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white ${
                   isSelected
                     ? 'border-neutral-900 dark:border-white bg-neutral-100/60 dark:bg-neutral-800/80 shadow-2xs'
                     : 'border-neutral-200/90 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600'

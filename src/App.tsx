@@ -11,6 +11,7 @@ import { CandidateDetailPage } from './pages/CandidateDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useCandidateStore } from './stores/useCandidateStore';
 import { useSettingsStore } from './stores/useSettingsStore';
+import { useThemeStore } from './stores/useThemeStore';
 import { api } from './lib/tauri';
 import { CandidateAnalysisCompleteEvent } from './types/processing';
 
@@ -38,14 +39,30 @@ interface ModelDownloadErrorPayload {
   error: string;
 }
 
+interface ResumeFailedPayload {
+  job_id: string;
+  resume_id: string;
+  error: string;
+}
+
+interface ResumeQueuePayload {
+  job_id: string;
+  resume_id: string;
+}
+
 export function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const handleAnalysisComplete = useCandidateStore((s) => s.handleAnalysisComplete);
+  const handleAnalysisFailed = useCandidateStore((s) => s.handleAnalysisFailed);
+  const handleProcessingUpdate = useCandidateStore((s) => s.handleProcessingUpdate);
   const setDownloadProgress = useSettingsStore((s) => s.setDownloadProgress);
   const setDownloadError = useSettingsStore((s) => s.setDownloadError);
   const fetchModels = useSettingsStore((s) => s.fetchModels);
 
   useEffect(() => {
+    // Initialize Theme (System / Dark / Light) with system OS preference listener
+    const cleanupTheme = useThemeStore.getState().initializeTheme();
+
     // Check onboarding status from settings
     api.settings.getAll().then((settings) => {
       setOnboardingCompleted(settings.onboarding_completed === 'true');
@@ -53,19 +70,37 @@ export function App() {
       setOnboardingCompleted(false);
     });
 
-    // Tauri Event Listeners
-    let unlistenAnalysis: (() => void) | undefined;
-    let unlistenProgress: (() => void) | undefined;
-    let unlistenComplete: (() => void) | undefined;
-    let unlistenError: (() => void) | undefined;
+    // Tauri Event Listeners with safe unmount cleanup tracking
+    let isMounted = true;
+    const unlisteners: (() => void)[] = [];
 
-    listen<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
+    const registerListener = <T,>(event: string, handler: (e: { payload: T }) => void) => {
+      listen<T>(event, handler).then((unlisten) => {
+        if (!isMounted) {
+          unlisten();
+        } else {
+          unlisteners.push(unlisten);
+        }
+      });
+    };
+
+    registerListener<CandidateAnalysisCompleteEvent>('candidate-analysis-complete', (event) => {
       handleAnalysisComplete(event.payload);
-    }).then((unlisten) => {
-      unlistenAnalysis = unlisten;
     });
 
-    listen<ModelDownloadProgressPayload>('model-download-progress', (event) => {
+    registerListener<ResumeFailedPayload>('resume-processing-failed', (event) => {
+      handleAnalysisFailed(event.payload);
+    });
+
+    registerListener<ResumeQueuePayload>('resume-queued', (event) => {
+      handleProcessingUpdate(event.payload.job_id);
+    });
+
+    registerListener<ResumeQueuePayload>('resume-processing-started', (event) => {
+      handleProcessingUpdate(event.payload.job_id);
+    });
+
+    registerListener<ModelDownloadProgressPayload>('model-download-progress', (event) => {
       const payload = event.payload;
       const modelId = payload.modelId ?? payload.model_id ?? '';
       const downloadedBytes = payload.downloadedBytes ?? payload.downloaded_bytes ?? 0;
@@ -80,39 +115,32 @@ export function App() {
         speedBps,
         etaSeconds,
       });
-    }).then((unlisten) => {
-      unlistenProgress = unlisten;
     });
 
-    listen<ModelDownloadCompletePayload>('model-download-complete', () => {
+    registerListener<ModelDownloadCompletePayload>('model-download-complete', () => {
       setDownloadProgress(null);
       setDownloadError(null);
       fetchModels();
-    }).then((unlisten) => {
-      unlistenComplete = unlisten;
     });
 
-    listen<ModelDownloadErrorPayload>('model-download-error', (event) => {
+    registerListener<ModelDownloadErrorPayload>('model-download-error', (event) => {
       const modelId = event.payload.modelId || event.payload.model_id || '';
       const error = event.payload.error;
       setDownloadProgress(null);
       setDownloadError({ modelId, message: error || 'Model download failed' });
       fetchModels();
-    }).then((unlisten) => {
-      unlistenError = unlisten;
     });
 
     return () => {
-      if (unlistenAnalysis) unlistenAnalysis();
-      if (unlistenProgress) unlistenProgress();
-      if (unlistenComplete) unlistenComplete();
-      if (unlistenError) unlistenError();
+      isMounted = false;
+      cleanupTheme();
+      unlisteners.forEach((fn) => fn());
     };
-  }, [handleAnalysisComplete, setDownloadProgress, setDownloadError, fetchModels]);
+  }, [handleAnalysisComplete, handleAnalysisFailed, handleProcessingUpdate, setDownloadProgress, setDownloadError, fetchModels]);
 
   if (onboardingCompleted === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-xs">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-neutral-500 dark:text-neutral-400 text-xs">
         Initializing HireLens...
       </div>
     );

@@ -59,16 +59,9 @@ function formatDate(dateStr?: string | null): string {
 
 /**
  * Modal dialog presented to users when uploading resumes that duplicate existing files
- * previously uploaded for the current job opening. Provides options to re-upload all or skip duplicates.
- *
- * Pressing Escape or canceling the dialog invokes `onCancel`.
+ * in monochrome Light and Dark styling.
  *
  * @param props - The component props
- * @param props.isOpen - Whether the dialog is visible
- * @param props.duplicateItems - Uploaded files classified as duplicates or new files
- * @param props.onConfirmUploadAll - Handles re-uploading all listed files
- * @param props.onConfirmSkipDuplicates - Handles uploading only new files
- * @param props.onCancel - Handles dismissing the dialog
  */
 export function DuplicateUploadDialog({
   isOpen,
@@ -80,14 +73,11 @@ export function DuplicateUploadDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
-  // Focus management: Trap focus inside modal, initial focus, and restore focus on dismiss
   useEffect(() => {
     if (!isOpen) return;
 
-    // Save currently focused element to restore when dialog closes
     previousActiveElementRef.current = document.activeElement as HTMLElement | null;
 
-    // Query focusable elements
     const getFocusableElements = () => {
       if (!dialogRef.current) return [];
       return Array.from(
@@ -97,10 +87,8 @@ export function DuplicateUploadDialog({
       );
     };
 
-    // Focus the first actionable button or close button on open
     const focusable = getFocusableElements();
     if (focusable.length > 0) {
-      // Focus on the first element (e.g. Close button or Cancel)
       focusable[0].focus();
     }
 
@@ -136,7 +124,6 @@ export function DuplicateUploadDialog({
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      // Restore focus to previous element when modal is dismissed
       if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
         previousActiveElementRef.current.focus();
       }
@@ -152,27 +139,27 @@ export function DuplicateUploadDialog({
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="duplicate-dialog-title"
       aria-describedby="duplicate-dialog-desc"
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-100 flex items-start gap-3.5 bg-amber-50/40">
-          <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/80">
+        <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-start gap-3.5 bg-neutral-50 dark:bg-neutral-800">
+          <div className="h-10 w-10 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center shrink-0 border border-neutral-300 dark:border-neutral-700">
             <AlertTriangle className="h-5 w-5" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 id="duplicate-dialog-title" className="text-base font-bold text-slate-900 leading-snug">
+            <h2 id="duplicate-dialog-title" className="text-base font-bold text-neutral-950 dark:text-white leading-snug">
               Duplicate Resume{duplicates.length > 1 ? 's' : ''} Detected
             </h2>
-            <p id="duplicate-dialog-desc" className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+            <p id="duplicate-dialog-desc" className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
               {duplicates.length === 1
                 ? 'A file with the same name and file size already exists for this job opening.'
                 : `${duplicates.length} files match the name and file size of resumes already uploaded for this job.`}
@@ -181,7 +168,7 @@ export function DuplicateUploadDialog({
 
           <button
             onClick={onCancel}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
             title="Close dialog"
             aria-label="Close dialog"
           >
@@ -197,7 +184,7 @@ export function DuplicateUploadDialog({
               {duplicates.length} Duplicate{duplicates.length > 1 ? 's' : ''}
             </Badge>
             {hasNewItems && (
-              <Badge variant="success" className="text-[11px] font-semibold py-1 px-2.5">
+              <Badge variant="secondary" className="text-[11px] font-semibold py-1 px-2.5">
                 {newItems.length} New File{newItems.length > 1 ? 's' : ''}
               </Badge>
             )}
@@ -205,24 +192,24 @@ export function DuplicateUploadDialog({
 
           {/* Duplicate Files List */}
           <div className="space-y-2">
-            <span className="font-semibold text-slate-700 text-[11px] uppercase tracking-wider block">
+            <span className="font-semibold text-neutral-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider block">
               Duplicate Files:
             </span>
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {duplicates.map((item, idx) => (
                 <div
                   key={`${item.filePath}-${idx}`}
-                  className="flex items-center justify-between p-3 rounded-xl border border-amber-200/90 bg-amber-50/30 gap-3"
+                  className="flex items-center justify-between p-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 gap-3"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="h-8 w-8 rounded-lg bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0">
+                    <div className="h-8 w-8 rounded-lg bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 flex items-center justify-center shrink-0">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 truncate text-xs" title={item.fileName}>
+                      <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate text-xs" title={item.fileName}>
                         {item.fileName}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                         {formatBytes(item.fileSize)} • Uploaded {formatDate(item.existingUploadedAt)}
                       </p>
                     </div>
@@ -240,23 +227,23 @@ export function DuplicateUploadDialog({
 
           {/* New Files List (if any) */}
           {hasNewItems && (
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <span className="font-semibold text-slate-700 text-[11px] uppercase tracking-wider block">
+            <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider block">
                 New Files ({newItems.length}):
               </span>
               <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                 {newItems.map((item, idx) => (
                   <div
                     key={`${item.filePath}-${idx}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50 gap-2"
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100/60 dark:bg-neutral-800/60 gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      <span className="text-slate-800 font-medium truncate" title={item.fileName}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-neutral-900 dark:text-white shrink-0" />
+                      <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate" title={item.fileName}>
                         {item.fileName}
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500 shrink-0">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400 shrink-0">
                       {formatBytes(item.fileSize)}
                     </span>
                   </div>
@@ -265,13 +252,13 @@ export function DuplicateUploadDialog({
             </div>
           )}
 
-          <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 leading-relaxed">
+          <p className="text-[11px] text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 p-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 leading-relaxed">
             Re-uploading duplicate resumes will create new processing entries and re-analyze candidate scores. You can also skip duplicate files to only process new resumes.
           </p>
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+        <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900 flex flex-col sm:flex-row items-center justify-end gap-2.5">
           <Button
             type="button"
             variant="outline"

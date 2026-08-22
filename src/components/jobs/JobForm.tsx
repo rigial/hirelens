@@ -11,7 +11,7 @@ import { useJobStore } from '../../stores/useJobStore';
 import { SkillPayload } from '../../types/job';
 
 /**
- * Provides a form for creating or editing a job opening.
+ * Provides a form for creating or editing a job opening in monochrome style.
  *
  * @returns The job creation or editing form.
  */
@@ -118,18 +118,18 @@ export function JobForm() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="h-full flex-1 overflow-y-auto overscroll-contain pr-1 max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(isEdit ? `/jobs/${jobId}` : '/jobs')}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to {isEdit ? 'Job Details' : 'Jobs'}
         </button>
 
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-indigo-600" />
+        <h1 className="text-xl font-bold text-neutral-950 dark:text-white flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-neutral-900 dark:text-white" />
           {isEdit ? 'Edit Job Opening' : 'Create New Job Opening'}
         </h1>
       </div>
@@ -155,23 +155,23 @@ export function JobForm() {
               />
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                   Employment Type
                 </label>
                 <select
                   value={employmentType}
                   onChange={(e) => setEmploymentType(e.target.value)}
-                  className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="flex h-9 w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 text-sm text-neutral-900 dark:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white"
                 >
-                  <option value="full-time">Full-time</option>
-                  <option value="part-time">Part-time</option>
-                  <option value="contract">Contract</option>
-                  <option value="internship">Internship</option>
+                  <option value="full-time" className="bg-white dark:bg-neutral-900">Full-time</option>
+                  <option value="part-time" className="bg-white dark:bg-neutral-900">Part-time</option>
+                  <option value="contract" className="bg-white dark:bg-neutral-900">Contract</option>
+                  <option value="internship" className="bg-white dark:bg-neutral-900">Internship</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                   Experience Required (Years)
                 </label>
                 <div className="flex items-center gap-2">
@@ -184,12 +184,12 @@ export function JobForm() {
                       placeholder="Min (e.g. 2)"
                       value={minExperienceYears}
                       onChange={(e) => setMinExperienceYears(e.target.value)}
-                      className={`flex h-9 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                        errors.experience ? 'border-rose-400 focus-visible:ring-rose-500' : 'border-slate-200'
+                      className={`flex h-9 w-full rounded-lg border bg-white dark:bg-neutral-900 px-3 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white ${
+                        errors.experience ? 'border-neutral-900 dark:border-white' : 'border-neutral-200 dark:border-neutral-700'
                       }`}
                     />
                   </div>
-                  <span className="text-slate-400 text-xs font-medium shrink-0">to</span>
+                  <span className="text-neutral-400 dark:text-neutral-500 text-xs font-medium shrink-0">to</span>
                   <div className="relative flex-1">
                     <input
                       type="number"
@@ -199,16 +199,16 @@ export function JobForm() {
                       placeholder="Max (e.g. 4)"
                       value={maxExperienceYears}
                       onChange={(e) => setMaxExperienceYears(e.target.value)}
-                      className={`flex h-9 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                        errors.experience ? 'border-rose-400 focus-visible:ring-rose-500' : 'border-slate-200'
+                      className={`flex h-9 w-full rounded-lg border bg-white dark:bg-neutral-900 px-3 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white ${
+                        errors.experience ? 'border-neutral-900 dark:border-white' : 'border-neutral-200 dark:border-neutral-700'
                       }`}
                     />
                   </div>
                 </div>
                 {errors.experience ? (
-                  <p className="text-[11px] text-rose-500 font-medium">{errors.experience}</p>
+                  <p className="text-[11px] text-neutral-900 dark:text-white font-semibold">{errors.experience}</p>
                 ) : (
-                  <p className="text-[11px] text-slate-400">e.g. 2 to 4, 3+ (min only), or blank for any</p>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">e.g. 2 to 4, 3+ (min only), or blank for any</p>
                 )}
               </div>
             </div>
@@ -218,17 +218,17 @@ export function JobForm() {
             {/* Job Description with Markdown Preview Toggle */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Job Description (Markdown Supported) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                  Job Description (Markdown Supported) <span className="text-neutral-900 dark:text-white font-bold">*</span>
                 </label>
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs">
                   <button
                     type="button"
                     onClick={() => setDescriptionTab('write')}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                       descriptionTab === 'write'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
                     <PenLine className="h-3 w-3" />
@@ -239,8 +239,8 @@ export function JobForm() {
                     onClick={() => setDescriptionTab('preview')}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                       descriptionTab === 'preview'
-                        ? 'bg-white text-indigo-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
                     <Eye className="h-3 w-3" />
@@ -262,20 +262,20 @@ export function JobForm() {
                 <div className="space-y-1.5">
                   <MarkdownView
                     content={description}
-                    className="min-h-[190px] max-h-[360px] bg-slate-50/50"
+                    className="min-h-[190px] max-h-[360px] bg-neutral-100/70 dark:bg-neutral-950"
                     placeholder="Nothing to preview yet. Switch to Write tab to enter the job description with markdown."
                   />
                   {errors.description && (
-                    <p className="text-xs text-rose-600 font-medium">{errors.description}</p>
+                    <p className="text-xs text-neutral-900 dark:text-white font-semibold">{errors.description}</p>
                   )}
                 </div>
               )}
-              <p className="text-[11px] text-slate-400">
-                Tip: Format headers with <code className="font-mono text-slate-500">#</code>, bullet lists with <code className="font-mono text-slate-500">-</code>, bold with <code className="font-mono text-slate-500">**bold**</code>.
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                Tip: Format headers with <code className="font-mono text-neutral-700 dark:text-neutral-300">#</code>, bullet lists with <code className="font-mono text-neutral-700 dark:text-neutral-300">-</code>, bold with <code className="font-mono text-neutral-700 dark:text-neutral-300">**bold**</code>.
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <Button
                 type="button"
                 variant="outline"

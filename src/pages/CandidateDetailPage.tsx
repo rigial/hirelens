@@ -15,7 +15,7 @@ export function CandidateDetailPage() {
 
   if (!activeCandidateDetail) {
     return (
-      <div className="text-center py-20 text-slate-500 text-xs">
+      <div className="text-center py-20 text-neutral-500 dark:text-neutral-400 text-xs">
         Loading candidate profile...
       </div>
     );

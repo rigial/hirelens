@@ -27,7 +27,7 @@ import { api } from '../lib/tauri';
 /**
  * Displays job details, candidate processing status, and candidates for the current job opening.
  *
- * Provides controls for editing, archiving, re-scoring candidates, uploading resumes, and updating shortlist statuses.
+ * Left panel and search bar remain fixed while the candidate list scrolls independently.
  */
 export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -51,6 +51,26 @@ export function JobDetailPage() {
       fetchProcessingStatus(jobId);
     }
   }, [jobId, fetchJob, fetchCandidates, fetchProcessingStatus]);
+
+  // Periodic status refresh while background processing is active
+  useEffect(() => {
+    if (!jobId) return;
+    const isProcessing = processingStatus && (processingStatus.inProgress > 0 || processingStatus.queued > 0);
+    if (!isProcessing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        await Promise.all([
+          fetchProcessingStatus(jobId),
+          fetchCandidates(jobId),
+        ]);
+      } catch (err) {
+        console.warn('Failed to poll candidate processing updates:', err);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [jobId, processingStatus, fetchProcessingStatus, fetchCandidates]);
 
   const handleArchive = async () => {
     if (!jobId) return;
@@ -82,6 +102,7 @@ export function JobDetailPage() {
     try {
       await api.candidates.reanalyzeAll(jobId);
       await fetchProcessingStatus(jobId);
+      await fetchCandidates(jobId);
     } finally {
       setIsReanalyzing(false);
     }
@@ -89,27 +110,29 @@ export function JobDetailPage() {
 
   if (!activeJob) {
     return (
-      <div className="text-center py-20 text-slate-500 text-xs">
+      <div className="text-center py-20 text-neutral-500 dark:text-neutral-400 text-xs">
         Loading job opening details...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Breadcrumb */}
-      <button
-        onClick={() => navigate('/jobs')}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 cursor-pointer"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Job Openings
-      </button>
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
+      {/* Top Breadcrumb — Fixed */}
+      <div className="shrink-0">
+        <button
+          onClick={() => navigate('/jobs')}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Job Openings
+        </button>
+      </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (Job Details & Upload Zone) — 4 of 12 cols */}
-        <div className="lg:col-span-4 space-y-5">
-          <Card className="border-slate-200/90 shadow-sm">
+      {/* Two Column Layout — Left is independently scrollable, Right isolates candidate scrolling */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden items-stretch">
+        {/* Left Column (Job Details & Upload Zone) — 4 of 12 cols, fixed/independent scroll */}
+        <div className="lg:col-span-4 flex flex-col min-h-0 overflow-y-auto overscroll-contain pr-1 space-y-4">
+          <Card className="border-neutral-200/90 dark:border-neutral-800 shadow-2xs shrink-0">
             <CardContent className="p-5 space-y-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -122,21 +145,21 @@ export function JobDetailPage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => navigate(`/jobs/${jobId}/edit`)}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+                      className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       title="Edit Job"
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={handleArchive}
-                      className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50"
+                      className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       title="Archive Job"
                     >
                       <Archive className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={handleDeleteJob}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                      className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       title="Delete Job Opening"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -144,27 +167,27 @@ export function JobDetailPage() {
                   </div>
                 </div>
 
-                <h1 className="text-lg font-bold text-slate-900 leading-snug">
+                <h1 className="text-lg font-bold text-neutral-950 dark:text-white leading-snug">
                   {activeJob.title}
                 </h1>
               </div>
 
               {/* Attributes */}
-              <div className="space-y-1.5 text-xs text-slate-600 pt-1 border-t border-slate-100">
+              <div className="space-y-1.5 text-xs text-neutral-600 dark:text-neutral-300 pt-1 border-t border-neutral-100 dark:border-neutral-800">
                 {activeJob.location && (
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    <MapPin className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                     <span>{activeJob.location}</span>
                   </div>
                 )}
                 {activeJob.employmentType && (
                   <div className="flex items-center gap-2">
-                    <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                    <Briefcase className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                     <span className="capitalize">{activeJob.employmentType}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                   <span>
                     {(() => {
                       const min = activeJob.minExperienceYears ?? (activeJob.experienceRequiredYears && activeJob.experienceRequiredYears > 0 ? activeJob.experienceRequiredYears : null);
@@ -187,29 +210,29 @@ export function JobDetailPage() {
               </div>
 
               {/* Required Skills */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <span className="text-xs font-semibold text-slate-700">Skills Criteria</span>
+              <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">Skills Criteria</span>
                 <div className="flex flex-wrap gap-1">
                   {activeJob.skills.map((s) => (
                     <Badge
                       key={s.id}
-                      variant={s.importance === 'required' ? 'indigo' : 'secondary'}
+                      variant={s.importance === 'required' ? 'default' : 'secondary'}
                       className="text-[10px]"
                     >
                       {s.skill}
                     </Badge>
                   ))}
                   {activeJob.skills.length === 0 && (
-                    <span className="text-xs text-slate-400 italic">No skills defined</span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 italic">No skills defined</span>
                   )}
                 </div>
               </div>
 
               {/* Description Expandable */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+              <div className="space-y-1.5 pt-2 border-t border-neutral-100 dark:border-neutral-800">
                 <button
                   onClick={() => setDescExpanded(!descExpanded)}
-                  className="flex items-center justify-between w-full text-xs font-semibold text-slate-700 hover:text-slate-900"
+                  className="flex items-center justify-between w-full text-xs font-semibold text-neutral-800 dark:text-neutral-200 hover:text-neutral-950 dark:hover:text-white cursor-pointer"
                 >
                   <span>Role Description</span>
                   {descExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -217,10 +240,10 @@ export function JobDetailPage() {
                 {descExpanded ? (
                   <MarkdownView
                     content={activeJob.description}
-                    className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-lg text-xs"
+                    className="p-3.5 bg-neutral-100/70 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs"
                   />
                 ) : (
-                  <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                  <div className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
                     {activeJob.description}
                   </div>
                 )}
@@ -228,7 +251,7 @@ export function JobDetailPage() {
 
               {/* Re-analyze Button */}
               {candidates.length > 0 && (
-                <div className="pt-2 border-t border-slate-100">
+                <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
                   <Button
                     size="sm"
                     variant="outline"
@@ -244,10 +267,10 @@ export function JobDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Upload Zone */}
-          <Card>
+          {/* Upload Zone Card */}
+          <Card className="shrink-0">
             <CardContent className="p-4 space-y-2">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wide">
                 Upload Resumes
               </span>
               <DropZone
@@ -263,9 +286,13 @@ export function JobDetailPage() {
           </Card>
         </div>
 
-        {/* Right Column (Candidates & Rankings) — 8 of 12 cols */}
-        <div className="lg:col-span-8 space-y-4">
-          <ProcessingStatusBar status={processingStatus} />
+        {/* Right Column (Candidates & Rankings) — 8 of 12 cols, fixed toolbar & dedicated resume list scrolling */}
+        <div className="lg:col-span-8 flex flex-col min-h-0 overflow-hidden h-full space-y-3">
+          {processingStatus && (processingStatus.inProgress > 0 || processingStatus.queued > 0) && (
+            <div className="shrink-0">
+              <ProcessingStatusBar status={processingStatus} />
+            </div>
+          )}
 
           <CandidateList
             candidates={candidates}
@@ -293,4 +320,3 @@ export function JobDetailPage() {
     </div>
   );
 }
-

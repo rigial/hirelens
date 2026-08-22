@@ -1,14 +1,14 @@
 import { ScoreBreakdown as ScoreBreakdownType } from '../../types/candidate';
 import { Progress } from '../ui/Progress';
+import { ScoreRing } from '../ui/ScoreRing';
 import { getScoreColor } from '../../lib/utils';
 
 interface ScoreBreakdownProps {
   scores: ScoreBreakdownType;
+  rank?: number | null;
 }
 
-export function ScoreBreakdown({ scores }: ScoreBreakdownProps) {
-  const overallColors = getScoreColor(scores.overallScore);
-
+export function ScoreBreakdown({ scores, rank }: ScoreBreakdownProps) {
   const breakdownItems = [
     { label: 'Skills Match', value: scores.skillsScore, weight: '40%' },
     { label: 'Experience Match', value: scores.experienceScore, weight: '25%' },
@@ -17,38 +17,50 @@ export function ScoreBreakdown({ scores }: ScoreBreakdownProps) {
   ];
 
   return (
-    <div className="space-y-4 bg-slate-50/70 border border-slate-200/80 rounded-xl p-5">
-      {/* Overall Score Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
-        <div>
-          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+    <div className="space-y-5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 transition-colors">
+      {/* Overall Score Header with Radial Score Gauge */}
+      <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
+        <div className="space-y-1">
+          <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
             Overall Match
+          </span>
+          <h4 className="text-sm font-bold text-neutral-950 dark:text-white">
+            Composite AI Scoring
           </h4>
-          <p className="text-xs text-slate-400">Weighted composite analysis</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Weighted across 4 criteria
+          </p>
         </div>
-        <div className={`text-2xl font-black ${overallColors.text}`}>
-          {scores.overallScore.toFixed(0)}%
-        </div>
+
+        <ScoreRing
+          score={scores.overallScore}
+          rank={rank}
+          size="md"
+          showRank={false}
+        />
       </div>
 
-      {/* Component Bars */}
-      <div className="space-y-3">
+      {/* Component Breakdown Progress Bars */}
+      <div className="space-y-3.5">
         {breakdownItems.map((item, idx) => {
           const itemColor = getScoreColor(item.value);
           return (
-            <div key={idx} className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="font-medium text-slate-700">
-                  {item.label} <span className="text-[10px] text-slate-400 font-normal">({item.weight})</span>
+            <div key={idx} className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-neutral-800 dark:text-neutral-200">
+                  {item.label}{' '}
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">
+                    ({item.weight})
+                  </span>
                 </span>
-                <span className={`font-bold ${itemColor.text}`}>
+                <span className="font-bold font-mono text-xs tabular-nums text-neutral-950 dark:text-white">
                   {item.value.toFixed(0)}%
                 </span>
               </div>
               <Progress
                 value={item.value}
                 indicatorClassName={itemColor.bar}
-                className="h-1.5"
+                className="h-1.5 bg-neutral-200 dark:bg-neutral-800"
               />
             </div>
           );

@@ -67,45 +67,45 @@ export function ModelSelector() {
               key={tier}
               className={cn(
                 'relative transition-all border-2 flex flex-col justify-between',
-                isActive ? 'border-indigo-600 bg-indigo-50/20 shadow-xs' : 'border-slate-200/80'
+                isActive ? 'border-neutral-900 dark:border-white bg-neutral-100/50 dark:bg-neutral-800/70 shadow-2xs' : 'border-neutral-200/90 dark:border-neutral-800'
               )}
             >
               <CardContent className="p-4 space-y-3 flex flex-col justify-between flex-1">
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 text-sm">{config.label}</span>
+                    <span className="font-bold text-neutral-950 dark:text-white text-sm">{config.label}</span>
                     <div className="flex gap-1">
                       {isRecommended && (
-                        <Badge variant="indigo" className="text-[10px]">
+                        <Badge variant="default" className="text-[10px]">
                           Recommended
                         </Badge>
                       )}
                       {isActive && (
-                        <Badge variant="success" className="text-[10px]">
+                        <Badge variant="secondary" className="text-[10px] font-semibold">
                           Active
                         </Badge>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <HardDrive className="h-3.5 w-3.5 text-slate-400" />
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                    <HardDrive className="h-3.5 w-3.5" />
                     <span>{config.size}</span>
                   </div>
 
-                  <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed min-h-[36px]">
                     {config.notes}
                   </p>
 
                   {/* Live Download Progress Box */}
                   {isCurrentDownloading && (
-                    <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
-                      <div className="flex justify-between items-center text-[11px] font-semibold text-slate-700">
+                    <div className="space-y-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2.5">
+                      <div className="flex justify-between items-center text-[11px] font-semibold text-neutral-800 dark:text-neutral-200">
                         <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />
+                          <Loader2 className="h-3 w-3 animate-spin text-neutral-900 dark:text-white" />
                           Downloading...
                         </span>
-                        <span className="font-mono text-indigo-600">
+                        <span className="font-mono text-neutral-900 dark:text-white font-bold">
                           {percent !== null ? `${percent}%` : 'Starting...'}
                         </span>
                       </div>
@@ -116,16 +116,16 @@ export function ModelSelector() {
 
                   {/* Error Notification */}
                   {modelError && (
-                    <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-1.5 text-[11px] text-rose-800">
-                      <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 flex items-start gap-1.5 text-[11px] text-neutral-900 dark:text-neutral-100">
+                      <AlertCircle className="h-3.5 w-3.5 text-neutral-900 dark:text-white shrink-0 mt-0.5" />
                       <span className="line-clamp-2">{modelError}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100">
+                <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
                   {isActive ? (
-                    <div className="flex items-center justify-center gap-1 text-xs text-emerald-600 font-semibold py-1">
+                    <div className="flex items-center justify-center gap-1 text-xs text-neutral-900 dark:text-white font-semibold py-1">
                       <CheckCircle2 className="h-4 w-4" /> Currently Active
                     </div>
                   ) : isCurrentDownloading ? (
@@ -133,7 +133,7 @@ export function ModelSelector() {
                       size="sm"
                       variant="outline"
                       onClick={() => model && handleCancel(model.id)}
-                      className="w-full text-xs text-slate-600 hover:text-rose-600 hover:border-rose-200 gap-1"
+                      className="w-full text-xs gap-1"
                     >
                       <XCircle className="h-3.5 w-3.5" /> Cancel Download
                     </Button>

@@ -36,14 +36,14 @@ export function Dashboard() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="h-full flex-1 overflow-y-auto overscroll-contain pr-1 space-y-8">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
             Overview • {today}
           </p>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 mt-0.5">
+          <h1 className="text-2xl font-black tracking-tight text-neutral-950 dark:text-white mt-0.5">
             Talent Screening Dashboard
           </h1>
         </div>
@@ -55,50 +55,50 @@ export function Dashboard() {
 
       {/* Stats Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-200/80">
+        <Card className="border-neutral-200/90 dark:border-neutral-800">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center shrink-0 border border-neutral-200 dark:border-neutral-700">
               <Briefcase className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Active Jobs</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-0.5">{jobs.length}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Active Jobs</p>
+              <h3 className="text-2xl font-bold text-neutral-950 dark:text-white mt-0.5 font-mono">{jobs.length}</h3>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/80">
+        <Card className="border-neutral-200/90 dark:border-neutral-800">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center shrink-0 border border-neutral-200 dark:border-neutral-700">
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Total Candidates</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-0.5">{totalCandidates}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Total Candidates</p>
+              <h3 className="text-2xl font-bold text-neutral-950 dark:text-white mt-0.5 font-mono">{totalCandidates}</h3>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/80">
+        <Card className="border-neutral-200/90 dark:border-neutral-800">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center shrink-0 border border-neutral-200 dark:border-neutral-700">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Shortlisted</p>
-              <h3 className="text-2xl font-bold text-emerald-900 mt-0.5">{totalShortlisted}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Shortlisted</p>
+              <h3 className="text-2xl font-bold text-neutral-950 dark:text-white mt-0.5 font-mono">{totalShortlisted}</h3>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/80">
+        <Card className="border-neutral-200/90 dark:border-neutral-800">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center shrink-0 border border-neutral-200 dark:border-neutral-700">
               <Clock className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Queue / Processing</p>
-              <h3 className="text-2xl font-bold text-amber-900 mt-0.5">{totalProcessing}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Queue / Processing</p>
+              <h3 className="text-2xl font-bold text-neutral-950 dark:text-white mt-0.5 font-mono">{totalProcessing}</h3>
             </div>
           </CardContent>
         </Card>
@@ -107,11 +107,11 @@ export function Dashboard() {
       {/* Active Jobs Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900">Active Job Openings</h2>
+          <h2 className="text-base font-bold text-neutral-950 dark:text-white">Active Job Openings</h2>
           {jobs.length > 4 && (
             <button
               onClick={() => navigate('/jobs')}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-neutral-900 dark:text-white hover:underline flex items-center gap-1 cursor-pointer"
             >
               View all ({jobs.length}) <ArrowRight className="h-3.5 w-3.5" />
             </button>
@@ -125,13 +125,13 @@ export function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-2xl p-8 space-y-4">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="text-center py-16 bg-white dark:bg-neutral-900 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 space-y-4">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700">
               <Sparkles className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900">Ready to screen your first role?</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <h3 className="text-base font-bold text-neutral-950 dark:text-white">Ready to screen your first role?</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
                 Create a job opening, configure required skills, and drop resumes to let the local AI rank candidates.
               </p>
             </div>

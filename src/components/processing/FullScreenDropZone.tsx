@@ -20,6 +20,7 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
   const dragCounter = useRef(0);
+  const isProcessingRef = useRef(false);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerSuccess = (count: number) => {
@@ -36,6 +37,11 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
   const processFilePaths = useCallback(async (filePaths: string[]) => {
     if (filePaths.length === 0 || !jobId) return;
 
+    if (isProcessingRef.current) {
+      return;
+    }
+    isProcessingRef.current = true;
+
     // Filter valid resume extensions (.pdf, .docx, .doc)
     const validPaths = filePaths.filter((path) => {
       const lower = path.toLowerCase();
@@ -43,6 +49,7 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
     });
 
     if (validPaths.length === 0) {
+      isProcessingRef.current = false;
       setErrorMessage('Only PDF, DOCX, and DOC resume documents are supported.');
       setTimeout(() => setErrorMessage(null), 5000);
       return;
@@ -59,7 +66,7 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
       if (hasDuplicates) {
         setDuplicateCandidates(duplicateResults);
         setIsDuplicateDialogOpen(true);
-        setIsUploading(false);
+        // Lock remains held while duplicate modal is open
         return;
       }
 
@@ -69,7 +76,9 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
       if (onUploaded) {
         onUploaded();
       }
+      isProcessingRef.current = false;
     } catch (err: any) {
+      isProcessingRef.current = false;
       setErrorMessage(err?.toString() || 'Failed to upload dropped resumes');
       setTimeout(() => setErrorMessage(null), 6000);
     } finally {
@@ -79,7 +88,8 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
 
   // Listen to Tauri 2 Native Webview drag & drop events
   useEffect(() => {
-    let unlistenTauri: (() => void) | undefined;
+    let unlistenTauri: (() => void) | null = null;
+    let isDisposed = false;
 
     try {
       const webview = getCurrentWebview();
@@ -96,7 +106,11 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
           }
         }
       }).then((unlisten) => {
-        unlistenTauri = unlisten;
+        if (isDisposed) {
+          unlisten();
+        } else {
+          unlistenTauri = unlisten;
+        }
       }).catch((e) => {
         console.warn('Tauri onDragDropEvent not available in browser mode:', e);
       });
@@ -142,14 +156,16 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
         const paths: string[] = [];
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
           const file = e.dataTransfer.files[i];
-          // @ts-expect-error path property attached by Tauri
-          if (file.path) {
-            // @ts-expect-error path property
-            paths.push(file.path);
+          const localPath = (file as unknown as { path?: string }).path;
+          if (localPath) {
+            paths.push(localPath);
           }
         }
         if (paths.length > 0) {
           processFilePaths(paths);
+        } else if (e.dataTransfer.files.length > 0) {
+          setErrorMessage('Browser drag-and-drop cannot access local file paths. Please use Browse Files.');
+          setTimeout(() => setErrorMessage(null), 6000);
         }
       }
     };
@@ -160,7 +176,11 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
     window.addEventListener('drop', handleWindowDrop);
 
     return () => {
-      if (unlistenTauri) unlistenTauri();
+      isDisposed = true;
+      if (unlistenTauri) {
+        unlistenTauri();
+        unlistenTauri = null;
+      }
       window.removeEventListener('dragenter', handleWindowDragEnter);
       window.removeEventListener('dragover', handleWindowDragOver);
       window.removeEventListener('dragleave', handleWindowDragLeave);
@@ -182,6 +202,7 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
     } catch (err: any) {
       setErrorMessage(err?.toString() || 'Failed to upload resumes');
     } finally {
+      isProcessingRef.current = false;
       setIsUploading(false);
     }
   };
@@ -201,14 +222,18 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
       } catch (err: any) {
         setErrorMessage(err?.toString() || 'Failed to upload resumes');
       } finally {
+        isProcessingRef.current = false;
         setIsUploading(false);
       }
+    } else {
+      isProcessingRef.current = false;
     }
   };
 
   const handleCancelDuplicates = () => {
     setIsDuplicateDialogOpen(false);
     setDuplicateCandidates([]);
+    isProcessingRef.current = false;
   };
 
   return (

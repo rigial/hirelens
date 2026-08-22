@@ -156,15 +156,17 @@ pub async fn perform_model_download(
     let target_path = models_dir.join(&model.file_name);
     let part_path = models_dir.join(format!("{}.part", model.file_name));
 
-    // HTTP client without aggressive total timeout (uses 30s connection timeout)
+    // HTTP client without aggressive total timeout (uses 30s connection & read timeout)
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(30))
+        .read_timeout(std::time::Duration::from_secs(30))
         .tcp_keepalive(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
     let mut attempts = 0;
     const MAX_RETRIES: usize = 3;
+    const CHUNK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
     loop {
         if cancel_flag.load(Ordering::Relaxed) {
@@ -198,15 +200,24 @@ pub async fn perform_model_download(
         let status = response.status();
         let (file, mut downloaded, total_size) = if status == reqwest::StatusCode::PARTIAL_CONTENT {
             // Server supports Range resume
-            let content_len = response.content_length().unwrap_or(0);
-            let total = existing_bytes + content_len;
+            let content_len = response.content_length();
+            let total = match content_len {
+                Some(len) if len > 0 => existing_bytes + len,
+                _ => {
+                    if model.size_bytes > 0 {
+                        model.size_bytes as u64
+                    } else {
+                        existing_bytes
+                    }
+                }
+            };
             let f = tokio::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&part_path)
                 .await
                 .map_err(|e| format!("Failed to open partial download file: {}", e))?;
-            (f, existing_bytes, if total > 0 { total } else { model.size_bytes as u64 })
+            (f, existing_bytes, total)
         } else if status == reqwest::StatusCode::OK {
             // Server sent full content (reset to 0)
             let total = response.content_length().unwrap_or(model.size_bytes as u64);
@@ -236,14 +247,29 @@ pub async fn perform_model_download(
         let mut smoothed_speed: f64 = 0.0;
         let mut stream_error = false;
 
-        while let Some(chunk_result) = stream.next().await {
+        loop {
+            let chunk_opt = match tokio::time::timeout(CHUNK_TIMEOUT, stream.next()).await {
+                Ok(Some(chunk_res)) => chunk_res,
+                Ok(None) => break,
+                Err(_timeout) => {
+                    if cancel_flag.load(Ordering::Relaxed) {
+                        writer.flush().await.ok();
+                        drop(writer);
+                        return Err("Download cancelled by user".to_string());
+                    }
+                    stream_error = true;
+                    eprintln!("Download chunk stream timed out after 30s");
+                    break;
+                }
+            };
+
             if cancel_flag.load(Ordering::Relaxed) {
                 writer.flush().await.ok();
                 drop(writer);
                 return Err("Download cancelled by user".to_string());
             }
 
-            let chunk = match chunk_result {
+            let chunk = match chunk_opt {
                 Ok(c) => c,
                 Err(e) => {
                     stream_error = true;
@@ -439,5 +465,22 @@ mod tests {
         assert_eq!(quality_model.sha256, "e47ad95dad6ff848b431053b375adb5d39321290ea2c638682577dafca87c008");
 
         std::fs::remove_file(&temp_db).ok();
+    }
+
+    #[test]
+    fn test_model_download_progress_serialization() {
+        let progress = ModelDownloadProgress {
+            model_id: "qwen-2.5-3b".to_string(),
+            downloaded_bytes: 1048576,
+            total_bytes: 2097152,
+            speed_bps: 524288,
+            eta_seconds: Some(2),
+        };
+        let json_str = serde_json::to_string(&progress).unwrap();
+        assert!(json_str.contains("\"modelId\":\"qwen-2.5-3b\""));
+        assert!(json_str.contains("\"downloadedBytes\":1048576"));
+        assert!(json_str.contains("\"totalBytes\":2097152"));
+        assert!(json_str.contains("\"speedBps\":524288"));
+        assert!(json_str.contains("\"etaSeconds\":2"));
     }
 }

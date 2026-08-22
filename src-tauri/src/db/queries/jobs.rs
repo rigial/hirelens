@@ -233,18 +233,21 @@ pub fn archive_job(conn: &Connection, job_id: &str) -> Result<()> {
 /// Deletes a job and all associated database records (skills, resumes, analysis, embeddings, queue).
 /// Returns all deleted resume file paths so physical files can be removed from disk.
 pub fn delete_job_db(conn: &Connection, job_id: &str) -> Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT file_path, candidate_id FROM resumes WHERE job_id = ?1")?;
+    let tx = conn.unchecked_transaction()?;
+
     let mut resume_paths = Vec::new();
     let mut candidate_ids = Vec::new();
 
-    let rows = stmt.query_map(params![job_id], |r| {
-        let path: String = r.get(0)?;
-        let cid: Option<String> = r.get(1)?;
-        Ok((path, cid))
-    })?;
+    {
+        let mut stmt = tx.prepare("SELECT file_path, candidate_id FROM resumes WHERE job_id = ?1")?;
+        let rows = stmt.query_map(params![job_id], |r| {
+            let path: String = r.get(0)?;
+            let cid: Option<String> = r.get(1)?;
+            Ok((path, cid))
+        })?;
 
-    for row in rows {
-        if let Ok((path, cid)) = row {
+        for row in rows {
+            let (path, cid) = row?;
             resume_paths.push(path);
             if let Some(c) = cid {
                 candidate_ids.push(c);
@@ -252,27 +255,29 @@ pub fn delete_job_db(conn: &Connection, job_id: &str) -> Result<Vec<String>> {
         }
     }
 
-    conn.execute("DELETE FROM processing_queue WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM embeddings WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM job_embeddings WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM candidate_analysis WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM shortlists WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM resumes WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM job_skills WHERE job_id = ?1", params![job_id])?;
-    conn.execute("DELETE FROM jobs WHERE id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM processing_queue WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM embeddings WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM job_embeddings WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM candidate_analysis WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM shortlists WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM resumes WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM job_skills WHERE job_id = ?1", params![job_id])?;
+    tx.execute("DELETE FROM jobs WHERE id = ?1", params![job_id])?;
 
-    for cid in candidate_ids {
-        let remaining_resumes: i64 = conn.query_row(
+    for cid in &candidate_ids {
+        let remaining_resumes: i64 = tx.query_row(
             "SELECT COUNT(*) FROM resumes WHERE candidate_id = ?1",
             params![cid],
             |r| r.get(0),
-        ).unwrap_or(0);
+        )?;
 
         if remaining_resumes == 0 {
-            conn.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid]).ok();
-            conn.execute("DELETE FROM candidates WHERE id = ?1", params![cid]).ok();
+            tx.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid])?;
+            tx.execute("DELETE FROM candidates WHERE id = ?1", params![cid])?;
         }
     }
+
+    tx.commit()?;
 
     Ok(resume_paths)
 }
@@ -316,6 +321,41 @@ mod tests {
 
         let lookup = get_job(&conn, &job.id);
         assert!(lookup.is_err());
+    }
+
+    #[test]
+    fn test_delete_job_db_with_resumes_and_orphans() {
+        let conn = setup_test_db();
+        let payload = CreateJobPayload {
+            title: "Frontend Lead".to_string(),
+            description: "React and TypeScript".to_string(),
+            location: None,
+            employment_type: None,
+            experience_required_years: None,
+            skills: vec![],
+        };
+        let job = create_job(&conn, payload).unwrap();
+
+        // Insert candidate and resume for this job
+        conn.execute(
+            "INSERT INTO candidates (id, name, email) VALUES ('cand-1', 'Alice', 'alice@test.com')",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO resumes (id, candidate_id, job_id, file_name, file_path, file_type, file_size) VALUES ('res-1', 'cand-1', ?1, 'alice.pdf', '/path/to/alice.pdf', 'pdf', 50000)",
+            params![job.id],
+        ).unwrap();
+
+        let paths = delete_job_db(&conn, &job.id).unwrap();
+        assert_eq!(paths, vec!["/path/to/alice.pdf".to_string()]);
+
+        // Candidate should also be deleted since they had no other resumes
+        let cand_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM candidates WHERE id = 'cand-1'",
+            [],
+            |r| r.get(0),
+        ).unwrap();
+        assert_eq!(cand_count, 0);
     }
 }
 

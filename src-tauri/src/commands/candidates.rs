@@ -127,7 +127,11 @@ pub async fn delete_resume(
     };
 
     if let Some(path) = file_path {
-        tokio::fs::remove_file(&path).await.ok();
+        if let Err(e) = tokio::fs::remove_file(&path).await {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(format!("Failed to remove resume file {}: {}", path, e));
+            }
+        }
     }
 
     Ok(())

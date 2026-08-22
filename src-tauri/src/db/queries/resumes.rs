@@ -170,30 +170,37 @@ pub fn find_resume_by_name_and_size(
 /// Deletes a resume record from SQLite and cleans up associated candidate if orphan.
 /// Returns the deleted resume's local file path if found.
 pub fn delete_resume_db(conn: &Connection, resume_id: &str) -> Result<Option<String>> {
-    let mut stmt = conn.prepare("SELECT file_path, candidate_id, job_id FROM resumes WHERE id = ?1")?;
-    let info: Option<(String, Option<String>, String)> = stmt.query_row(params![resume_id], |r| {
-        Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-    }).ok();
+    use rusqlite::OptionalExtension;
+
+    let tx = conn.unchecked_transaction()?;
+
+    let info: Option<(String, Option<String>, String)> = {
+        let mut stmt = tx.prepare("SELECT file_path, candidate_id, job_id FROM resumes WHERE id = ?1")?;
+        stmt.query_row(params![resume_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        }).optional()?
+    };
 
     if let Some((file_path, candidate_id, _job_id)) = info {
-        conn.execute("DELETE FROM processing_queue WHERE resume_id = ?1", params![resume_id])?;
-        conn.execute("DELETE FROM embeddings WHERE resume_id = ?1", params![resume_id])?;
-        conn.execute("DELETE FROM candidate_analysis WHERE resume_id = ?1", params![resume_id])?;
-        conn.execute("DELETE FROM resumes WHERE id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM processing_queue WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM embeddings WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM candidate_analysis WHERE resume_id = ?1", params![resume_id])?;
+        tx.execute("DELETE FROM resumes WHERE id = ?1", params![resume_id])?;
 
         if let Some(ref cid) = candidate_id {
-            let other_resumes: i64 = conn.query_row(
+            let other_resumes: i64 = tx.query_row(
                 "SELECT COUNT(*) FROM resumes WHERE candidate_id = ?1",
                 params![cid],
                 |r| r.get(0),
-            ).unwrap_or(0);
+            )?;
 
             if other_resumes == 0 {
-                conn.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid]).ok();
-                conn.execute("DELETE FROM candidates WHERE id = ?1", params![cid]).ok();
+                tx.execute("DELETE FROM shortlists WHERE candidate_id = ?1", params![cid])?;
+                tx.execute("DELETE FROM candidates WHERE id = ?1", params![cid])?;
             }
         }
 
+        tx.commit()?;
         Ok(Some(file_path))
     } else {
         Ok(None)

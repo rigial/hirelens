@@ -4,9 +4,10 @@ import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Progress } from '../ui/Progress';
+import { DownloadStatusFooter } from '../settings/DownloadStatusFooter';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { MODEL_TIER_CONFIG } from '../../lib/constants';
-import { formatBytes, formatEstimatedTime, cn } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { ModelTier } from '../../types/settings';
 
 interface ModelDownloadStepProps {
@@ -209,30 +210,11 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
               value={percent !== null ? percent : 5}
             />
 
-            <div className="flex justify-between items-center text-[11px] text-slate-500">
-              <span>
-                {currentDownloadForSelected
-                  ? `${formatBytes(currentDownloadForSelected.downloaded)} / ${formatBytes(currentDownloadForSelected.total)}`
-                  : 'Preparing stream...'}
-              </span>
-              <div className="flex items-center gap-2">
-                {currentDownloadForSelected && currentDownloadForSelected.etaSeconds !== undefined && currentDownloadForSelected.etaSeconds !== null && currentDownloadForSelected.etaSeconds > 0 && (
-                  <span className="text-indigo-600 font-semibold bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[10px]">
-                    {formatEstimatedTime(currentDownloadForSelected.etaSeconds)}
-                  </span>
-                )}
-                <span>
-                  {currentDownloadForSelected && currentDownloadForSelected.speedBps > 0
-                    ? `${formatBytes(currentDownloadForSelected.speedBps)}/s`
-                    : 'Connecting...'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 justify-center">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Screen kept awake • Continues in background</span>
-            </div>
+            <DownloadStatusFooter
+              progress={currentDownloadForSelected}
+              statusSubtitle="Screen kept awake • Continues in background"
+              sizeVariant="md"
+            />
 
             <div className="pt-1">
               <Button

@@ -49,7 +49,11 @@ export function ProcessingStatusBar({ status }: ProcessingStatusBarProps) {
             <AlertTriangle className="h-3 w-3" /> {status.failed} failed
           </span>
         )}
-        <span>{activeRemaining} remaining in queue</span>
+        <span>
+          {status.inProgress > 0 && status.queued > 0
+            ? `${status.inProgress} in progress, ${status.queued} queued`
+            : `${activeRemaining} remaining`}
+        </span>
       </div>
     </div>
   );

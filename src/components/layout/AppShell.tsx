@@ -4,11 +4,11 @@ import { Header } from './Header';
 
 export function AppShell() {
   return (
-    <div className="flex min-h-screen bg-slate-50/50">
+    <div className="flex h-screen w-screen overflow-hidden bg-neutral-50 dark:bg-black text-neutral-900 dark:text-neutral-100 transition-colors select-none">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         <Header />
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-6 overflow-hidden max-w-7xl mx-auto w-full flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>

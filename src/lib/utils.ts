@@ -30,28 +30,34 @@ export function formatDate(dateString: string) {
 export function getScoreColor(score: number) {
   if (score >= 75) {
     return {
-      text: 'text-emerald-700 dark:text-emerald-400',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-      bar: 'bg-emerald-500',
+      text: 'text-neutral-950 dark:text-white',
+      bg: 'bg-neutral-100 dark:bg-neutral-800',
+      border: 'border-neutral-900 dark:border-neutral-400',
+      badge: 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 border-neutral-900 dark:border-white',
+      bar: 'bg-neutral-900 dark:bg-white',
+      stroke: 'stroke-neutral-950 dark:stroke-white',
+      ringBg: 'bg-neutral-50 dark:bg-neutral-900',
     };
   }
   if (score >= 50) {
     return {
-      text: 'text-amber-700 dark:text-amber-400',
-      bg: 'bg-amber-50 dark:bg-amber-950/40',
-      border: 'border-amber-200 dark:border-amber-800',
-      badge: 'bg-amber-100 text-amber-800 border-amber-300',
-      bar: 'bg-amber-500',
+      text: 'text-neutral-800 dark:text-neutral-200',
+      bg: 'bg-neutral-50 dark:bg-neutral-850',
+      border: 'border-neutral-400 dark:border-neutral-600',
+      badge: 'bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700',
+      bar: 'bg-neutral-700 dark:bg-neutral-300',
+      stroke: 'stroke-neutral-700 dark:stroke-neutral-300',
+      ringBg: 'bg-neutral-50 dark:bg-neutral-900',
     };
   }
   return {
-    text: 'text-rose-700 dark:text-rose-400',
-    bg: 'bg-rose-50 dark:bg-rose-950/40',
-    border: 'border-rose-200 dark:border-rose-800',
-    badge: 'bg-rose-100 text-rose-800 border-rose-300',
-    bar: 'bg-rose-500',
+    text: 'text-neutral-600 dark:text-neutral-400',
+    bg: 'bg-neutral-50/50 dark:bg-neutral-900/60',
+    border: 'border-neutral-200 dark:border-neutral-800',
+    badge: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800/80 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700',
+    bar: 'bg-neutral-400 dark:bg-neutral-500',
+    stroke: 'stroke-neutral-400 dark:stroke-neutral-600',
+    ringBg: 'bg-neutral-50 dark:bg-neutral-900',
   };
 }
 

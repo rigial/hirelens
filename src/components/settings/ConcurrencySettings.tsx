@@ -27,14 +27,14 @@ export function ConcurrencySettings() {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-indigo-600" /> Background Worker Concurrency
+          <Cpu className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> Background Worker Concurrency
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex justify-between text-xs font-semibold text-slate-700">
+          <div className="flex justify-between text-xs font-semibold text-neutral-800 dark:text-neutral-200">
             <span>Max Concurrent Resume Analyses</span>
-            <span className="font-bold text-indigo-600 text-sm">{concurrency} workers</span>
+            <span className="font-bold text-neutral-950 dark:text-white text-sm font-mono">{concurrency} workers</span>
           </div>
 
           <input
@@ -44,18 +44,18 @@ export function ConcurrencySettings() {
             step="1"
             value={concurrency}
             onChange={(e) => setConcurrency(parseInt(e.target.value, 10))}
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-neutral-900 dark:accent-white"
           />
 
-          <div className="flex justify-between text-[11px] text-slate-400">
+          <div className="flex justify-between text-[11px] text-neutral-400 dark:text-neutral-500">
             <span>1 (Conservative)</span>
             <span>Recommended: {systemInfo?.hasGpu ? '4 (GPU)' : '2 (CPU)'}</span>
             <span>8 (Maximum)</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-500">
+        <div className="flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
             Hardware: {systemInfo?.cpuCores || 4} CPU Cores • {systemInfo?.gpuType || 'CPU'}
           </p>
           <Button size="sm" onClick={handleSave} className="text-xs">

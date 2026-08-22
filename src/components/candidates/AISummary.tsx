@@ -13,15 +13,15 @@ export function AISummary({ summary, strengths, concerns }: AISummaryProps) {
   }
 
   return (
-    <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/30 to-white">
+    <Card className="border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
       <CardContent className="p-5 space-y-4">
-        <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
-          <Sparkles className="h-4 w-4 text-indigo-600" />
+        <div className="flex items-center gap-2 text-neutral-950 dark:text-white font-bold text-sm">
+          <Sparkles className="h-4 w-4 text-neutral-900 dark:text-white" />
           <span>AI Qualitative Evaluation</span>
         </div>
 
         {summary && (
-          <p className="text-xs text-slate-700 leading-relaxed bg-white/80 p-3 rounded-lg border border-indigo-50">
+          <p className="text-xs text-neutral-900 dark:text-neutral-100 leading-relaxed bg-neutral-100/80 dark:bg-neutral-800/80 p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700">
             {summary}
           </p>
         )}
@@ -30,16 +30,16 @@ export function AISummary({ summary, strengths, concerns }: AISummaryProps) {
           {/* Strengths */}
           {strengths.length > 0 && (
             <div className="space-y-2">
-              <h5 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 uppercase tracking-wide">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Key Strengths
+              <h5 className="text-xs font-bold text-neutral-950 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+                <CheckCircle2 className="h-3.5 w-3.5 text-neutral-900 dark:text-white" /> Key Strengths
               </h5>
               <ul className="space-y-1.5">
                 {strengths.map((item, idx) => (
                   <li
                     key={idx}
-                    className="text-xs text-slate-600 flex items-start gap-2 bg-emerald-50/40 border border-emerald-100/60 rounded-md p-2"
+                    className="text-xs text-neutral-900 dark:text-neutral-100 flex items-start gap-2 bg-neutral-100/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2.5"
                   >
-                    <span className="text-emerald-500 font-bold leading-none mt-0.5">•</span>
+                    <span className="text-neutral-900 dark:text-white font-bold leading-none mt-0.5">•</span>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -50,16 +50,16 @@ export function AISummary({ summary, strengths, concerns }: AISummaryProps) {
           {/* Concerns */}
           {concerns.length > 0 && (
             <div className="space-y-2">
-              <h5 className="text-xs font-bold text-amber-800 flex items-center gap-1.5 uppercase tracking-wide">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-600" /> Areas of Review
+              <h5 className="text-xs font-bold text-neutral-950 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+                <AlertCircle className="h-3.5 w-3.5 text-neutral-900 dark:text-white" /> Areas of Review
               </h5>
               <ul className="space-y-1.5">
                 {concerns.map((item, idx) => (
                   <li
                     key={idx}
-                    className="text-xs text-slate-600 flex items-start gap-2 bg-amber-50/40 border border-amber-100/60 rounded-md p-2"
+                    className="text-xs text-neutral-900 dark:text-neutral-100 flex items-start gap-2 bg-neutral-100/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2.5"
                   >
-                    <span className="text-amber-500 font-bold leading-none mt-0.5">•</span>
+                    <span className="text-neutral-900 dark:text-white font-bold leading-none mt-0.5">•</span>
                     <span>{item}</span>
                   </li>
                 ))}

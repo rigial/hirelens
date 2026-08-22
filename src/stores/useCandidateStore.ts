@@ -14,6 +14,8 @@ interface CandidateStore {
   updateShortlistStatus: (jobId: string, candidateId: string, status: string, notes?: string) => Promise<void>;
   retryResume: (jobId: string, resumeId: string) => Promise<void>;
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => void;
+  handleAnalysisFailed: (event: { job_id: string; resume_id: string; error: string }) => void;
+  handleProcessingUpdate: (jobId: string) => void;
   fetchProcessingStatus: (jobId: string) => Promise<void>;
   deleteResume: (jobId: string, resumeId: string) => Promise<void>;
 }
@@ -108,9 +110,19 @@ export const useCandidateStore = create<CandidateStore>((set, get) => ({
   },
 
   handleAnalysisComplete: (event: CandidateAnalysisCompleteEvent) => {
-    // Trigger candidate list refresh
+    // Trigger candidate list refresh & status update
     get().fetchCandidates(event.job_id).catch(() => {});
     get().fetchProcessingStatus(event.job_id).catch(() => {});
+  },
+
+  handleAnalysisFailed: (event: { job_id: string; resume_id: string; error: string }) => {
+    // Trigger candidate list refresh & status update on failure
+    get().fetchCandidates(event.job_id).catch(() => {});
+    get().fetchProcessingStatus(event.job_id).catch(() => {});
+  },
+
+  handleProcessingUpdate: (jobId: string) => {
+    get().fetchProcessingStatus(jobId).catch(() => {});
   },
 
   fetchProcessingStatus: async (jobId: string) => {

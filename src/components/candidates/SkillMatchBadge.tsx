@@ -14,22 +14,22 @@ export function SkillMatchBadge({ skill, matched = true }: SkillMatchBadgeProps)
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
         matched
           ? isRequired
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            : 'bg-slate-50 text-slate-700 border-slate-200'
-          : 'bg-rose-50 text-rose-800 border-rose-200 line-through opacity-80'
+            ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 border-neutral-900 dark:border-white font-semibold shadow-2xs'
+            : 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700'
+          : 'bg-neutral-100/80 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 line-through'
       )}
     >
       {matched ? (
-        <Check className="h-3 w-3 text-emerald-600 shrink-0 stroke-[2.5]" />
+        <Check className="h-3 w-3 shrink-0 stroke-[2.8]" />
       ) : (
-        <X className="h-3 w-3 text-rose-500 shrink-0 stroke-[2.5]" />
+        <X className="h-3 w-3 shrink-0 stroke-[2.8]" />
       )}
       <span>{skillName}</span>
       {!matched && isRequired && (
-        <span className="text-[10px] text-rose-600 font-semibold no-underline">(Required)</span>
+        <span className="text-[10px] text-neutral-800 dark:text-neutral-200 font-bold no-underline ml-0.5">(Required)</span>
       )}
     </span>
   );

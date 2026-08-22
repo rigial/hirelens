@@ -7,13 +7,20 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {
   const variants = {
-    default: 'bg-slate-900 text-white',
-    secondary: 'bg-slate-100 text-slate-700 border border-slate-200/60',
-    outline: 'border border-slate-300 text-slate-700 bg-white',
-    success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border border-amber-200',
-    destructive: 'bg-rose-50 text-rose-700 border border-rose-200',
-    indigo: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    default:
+      'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 shadow-2xs',
+    secondary:
+      'bg-neutral-100 text-neutral-800 border border-neutral-200/80 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700',
+    outline:
+      'border border-neutral-300 text-neutral-800 bg-white dark:border-neutral-700 dark:text-neutral-200 dark:bg-neutral-900',
+    success:
+      'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-semibold border border-neutral-900 dark:border-white',
+    warning:
+      'bg-neutral-100 text-neutral-900 border border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600',
+    destructive:
+      'bg-neutral-100 text-neutral-900 border border-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600',
+    indigo:
+      'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 border border-neutral-900 dark:border-white',
   };
 
   return (

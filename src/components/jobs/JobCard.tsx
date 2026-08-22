@@ -37,15 +37,15 @@ export function JobCard({ job }: JobCardProps) {
   return (
     <Card
       onClick={() => navigate(`/jobs/${job.id}`)}
-      className="cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all duration-200"
+      className="cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-xs transition-all duration-200"
     >
       <CardContent className="p-5 space-y-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-slate-900 text-base group-hover:text-indigo-600 truncate">
+            <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-base group-hover:text-neutral-950 dark:group-hover:text-white truncate">
               {job.title}
             </h3>
-            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+            <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-wrap">
               {job.location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
@@ -83,7 +83,7 @@ export function JobCard({ job }: JobCardProps) {
               onClick={handleDelete}
               disabled={isDeleting}
               title="Delete Job Opening"
-              className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+              className="p-1 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
             >
               {isDeleting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -95,37 +95,36 @@ export function JobCard({ job }: JobCardProps) {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
-          <div className="p-2 bg-slate-50 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-slate-500 text-[11px]">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 text-center">
+          <div className="p-2 bg-neutral-100 dark:bg-neutral-800/90 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center justify-center gap-1 text-neutral-600 dark:text-neutral-400 text-[11px] font-medium">
               <Users className="h-3 w-3" /> Total
             </div>
-            <p className="font-bold text-slate-900 text-sm mt-0.5">{job.candidateCount}</p>
+            <p className="font-bold text-neutral-950 dark:text-white text-sm mt-0.5 font-mono">{job.candidateCount}</p>
           </div>
 
-          <div className="p-2 bg-emerald-50/60 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-emerald-700 text-[11px]">
+          <div className="p-2 bg-neutral-100 dark:bg-neutral-800/90 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center justify-center gap-1 text-neutral-600 dark:text-neutral-400 text-[11px] font-medium">
               <CheckCircle className="h-3 w-3" /> Shortlisted
             </div>
-            <p className="font-bold text-emerald-900 text-sm mt-0.5">{job.shortlistedCount}</p>
+            <p className="font-bold text-neutral-950 dark:text-white text-sm mt-0.5 font-mono">{job.shortlistedCount}</p>
           </div>
 
-          <div className="p-2 bg-indigo-50/60 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-indigo-700 text-[11px]">
+          <div className="p-2 bg-neutral-100 dark:bg-neutral-800/90 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <div className="flex items-center justify-center gap-1 text-neutral-600 dark:text-neutral-400 text-[11px] font-medium">
               <Clock className="h-3 w-3" /> Processing
             </div>
-            <p className="font-bold text-indigo-900 text-sm mt-0.5">{job.processingCount}</p>
+            <p className="font-bold text-neutral-950 dark:text-white text-sm mt-0.5 font-mono">{job.processingCount}</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+        <div className="flex items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500 pt-1">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" /> Added {formatDate(job.createdAt)}
           </span>
-          <span className="text-indigo-600 font-medium hover:underline">View Candidates →</span>
+          <span className="text-neutral-900 dark:text-white font-semibold hover:underline">View Candidates →</span>
         </div>
       </CardContent>
     </Card>
   );
 }
-

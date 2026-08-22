@@ -18,7 +18,7 @@ export interface DropZoneProps {
 
 /**
  * Interactive drag-and-drop file upload zone for candidate resumes with automated
- * duplicate detection checking and confirmation before upload.
+ * duplicate detection checking and confirmation before upload in monochrome style.
  *
  * @param props - The component props
  * @param props.jobId - Target job ID where resumes will be uploaded
@@ -226,8 +226,8 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
         onClick={handleBrowseClick}
         className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer select-none ${
           isDragging
-            ? 'border-indigo-500 bg-indigo-50/50 scale-[1.01]'
-            : 'border-slate-200/90 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
+            ? 'border-neutral-900 dark:border-white bg-neutral-100 dark:bg-neutral-800 scale-[1.01]'
+            : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 hover:bg-neutral-100/60 dark:hover:bg-neutral-850 hover:border-neutral-400 dark:hover:border-neutral-600'
         }`}
       >
         <input
@@ -240,25 +240,25 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
         />
 
         <div className="flex flex-col items-center justify-center space-y-2.5">
-          <div className="h-10 w-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white flex items-center justify-center border border-neutral-200 dark:border-neutral-700">
             {isUploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : uploadSuccessCount !== null ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 text-neutral-900 dark:text-white" />
             ) : (
               <UploadCloud className="h-5 w-5" />
             )}
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-slate-800">
+            <p className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
               {isUploading
                 ? 'Uploading resumes to queue...'
                 : uploadSuccessCount !== null
                 ? `Uploaded ${uploadSuccessCount} resume${uploadSuccessCount > 1 ? 's' : ''} successfully`
                 : 'Drag & drop resumes or click to browse'}
             </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
               Supports batch PDF & DOCX resumes
             </p>
           </div>
@@ -281,7 +281,7 @@ export function DropZone({ jobId, onUploaded }: DropZoneProps) {
       </div>
 
       {errorMessage && (
-        <div className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+        <div className="flex items-center gap-1.5 text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg p-2.5">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>

@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full w-full overflow-hidden">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/app-icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>HireLens — Local AI Hiring Assistant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
 
-  <body class="bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
-    <div id="root"></div>
+  <body class="h-full w-full overflow-hidden bg-white dark:bg-black text-neutral-900 dark:text-neutral-100 selection:bg-neutral-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+    <div id="root" class="h-full w-full overflow-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

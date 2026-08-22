@@ -99,13 +99,13 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-center py-4">
       <div className="space-y-2">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700">
           <Sparkles className="h-6 w-6" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h2 className="text-2xl font-bold tracking-tight text-neutral-950 dark:text-white">
           Choose your Local AI Model
         </h2>
-        <p className="text-sm text-slate-600 max-w-md mx-auto">
+        <p className="text-sm text-neutral-600 dark:text-neutral-300 max-w-md mx-auto">
           HireLens runs open weights on your machine for complete candidate privacy. Select the tier best suited for your computer.
         </p>
       </div>
@@ -135,41 +135,41 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
                 }
               }}
               className={cn(
-                'cursor-pointer transition-all relative border-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+                'cursor-pointer transition-all relative border-2 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white focus:ring-offset-2',
                 isSelected
-                  ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
-                  : 'border-slate-200/80 hover:border-slate-300',
-                isDownloading && !isSelected && 'opacity-60 cursor-not-allowed'
+                  ? 'border-neutral-900 dark:border-white bg-neutral-100/60 dark:bg-neutral-800/80 shadow-xs'
+                  : 'border-neutral-200/90 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600',
+                isDownloading && !isSelected && 'opacity-50 cursor-not-allowed'
               )}
             >
               <CardContent className="p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-900 text-sm">{config.label}</span>
+                  <span className="font-semibold text-neutral-950 dark:text-white text-sm">{config.label}</span>
                   <div className="flex items-center gap-1">
                     {isRecommended && (
-                      <Badge variant="indigo" className="text-[10px]">
+                      <Badge variant="default" className="text-[10px]">
                         Recommended
                       </Badge>
                     )}
                     {isTierDownloaded && (
-                      <Badge variant="success" className="text-[10px]">
+                      <Badge variant="secondary" className="text-[10px] font-semibold">
                         Downloaded
                       </Badge>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <HardDrive className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  <HardDrive className="h-3.5 w-3.5" />
                   <span>{config.size}</span>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">
+                <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed min-h-[36px]">
                   {config.notes}
                 </p>
 
                 {isTierDownloading && (
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 pt-1">
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-900 dark:text-white pt-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     <span>Downloading...</span>
                   </div>
@@ -182,8 +182,8 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
 
       {/* Error Message Banner */}
       {hasError && (
-        <div className="max-w-md mx-auto p-3 rounded-xl bg-rose-50 border border-rose-200 text-left flex items-start gap-2.5 text-xs text-rose-800">
-          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+        <div className="max-w-md mx-auto p-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-left flex items-start gap-2.5 text-xs text-neutral-900 dark:text-neutral-100">
+          <AlertCircle className="h-4 w-4 text-neutral-900 dark:text-white shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-semibold">Download error: </span>
             <span>{hasError}</span>
@@ -194,13 +194,13 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
       {/* Progress & Actions */}
       <div className="pt-2 max-w-md mx-auto space-y-4">
         {isDownloading && (
-          <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-4 text-left shadow-xs">
-            <div className="flex justify-between items-center text-xs font-semibold text-slate-700">
+          <div className="space-y-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 text-left shadow-2xs">
+            <div className="flex justify-between items-center text-xs font-semibold text-neutral-800 dark:text-neutral-200">
               <span className="flex items-center gap-1.5">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-900 dark:text-white" />
                 Downloading {selectedModel?.displayName || 'model'}...
               </span>
-              <span className="text-indigo-600 font-mono">
+              <span className="text-neutral-900 dark:text-white font-mono font-bold">
                 {percent !== null ? `${percent}%` : 'Connecting...'}
               </span>
             </div>
@@ -209,7 +209,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
               value={percent !== null ? percent : 5}
             />
 
-            <div className="flex justify-between items-center text-[11px] text-slate-500">
+            <div className="flex justify-between items-center text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
               <span>
                 {currentDownloadForSelected
                   ? `${formatBytes(currentDownloadForSelected.downloaded)} / ${formatBytes(currentDownloadForSelected.total)}`
@@ -217,7 +217,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
               </span>
               <div className="flex items-center gap-2">
                 {currentDownloadForSelected && currentDownloadForSelected.etaSeconds !== undefined && currentDownloadForSelected.etaSeconds !== null && currentDownloadForSelected.etaSeconds > 0 && (
-                  <span className="text-indigo-600 font-semibold bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="text-neutral-900 dark:text-white font-semibold bg-neutral-200 dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[10px]">
                     {formatEstimatedTime(currentDownloadForSelected.etaSeconds)}
                   </span>
                 )}
@@ -229,8 +229,8 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 justify-center">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500 justify-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-neutral-900 dark:bg-white animate-pulse" />
               <span>Screen kept awake • Continues in background</span>
             </div>
 
@@ -240,7 +240,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleCancel}
-                className="w-full text-xs text-slate-600 hover:text-rose-600 hover:border-rose-200 gap-1.5"
+                className="w-full text-xs gap-1.5"
               >
                 <XCircle className="h-3.5 w-3.5" /> Cancel Download
               </Button>
@@ -250,7 +250,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
 
         {isDownloaded ? (
           <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 text-emerald-600 font-semibold text-sm">
+            <div className="flex items-center justify-center gap-2 text-neutral-900 dark:text-white font-semibold text-sm">
               <CheckCircle2 className="h-5 w-5" /> Model configured and ready
             </div>
             <Button size="lg" onClick={handleFinish} className="w-full gap-2">
@@ -271,7 +271,7 @@ export function ModelDownloadStep({ onComplete }: ModelDownloadStepProps) {
             <button
               type="button"
               onClick={handleSkipForNow}
-              className="text-xs text-slate-400 hover:text-slate-600 underline pt-1 cursor-pointer"
+              className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 underline pt-1 cursor-pointer"
             >
               Skip setup and configure models later in Settings
             </button>

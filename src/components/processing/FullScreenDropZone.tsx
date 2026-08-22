@@ -213,35 +213,33 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
 
   return (
     <>
-      {/* Full-Screen Drag-and-Drop Animated Overlay */}
+      {/* Full-Screen Drag-and-Drop Monochrome Overlay */}
       {isDragOver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-8 transition-all animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
-          <div className="relative flex flex-col items-center justify-center max-w-xl w-full p-12 text-center rounded-3xl border-3 border-dashed border-indigo-400 bg-slate-900/90 shadow-2xl space-y-6">
-            {/* Glowing Accent Rings */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-8 transition-all animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+          <div className="relative flex flex-col items-center justify-center max-w-xl w-full p-12 text-center rounded-3xl border-2 border-dashed border-neutral-400 bg-neutral-950/95 shadow-2xl space-y-6">
             <div className="relative">
-              <div className="absolute -inset-4 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
-              <div className="relative h-24 w-24 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-lg transform -rotate-3 animate-bounce">
-                <UploadCloud className="h-12 w-12 stroke-[2.2]" />
+              <div className="h-20 w-20 rounded-2xl bg-white text-black flex items-center justify-center shadow-xl animate-bounce">
+                <UploadCloud className="h-10 w-10 stroke-[2.2]" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs font-semibold">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>AI Screening Pipeline</span>
               </div>
               <h2 className="text-3xl font-extrabold text-white tracking-tight">
                 Drop Resumes Anywhere
               </h2>
-              <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+              <p className="text-sm text-neutral-300 max-w-md mx-auto leading-relaxed">
                 Release your candidate resumes to automatically parse profiles, extract skills, and rank matches for{' '}
-                <span className="text-indigo-300 font-semibold">{jobTitle || 'this job opening'}</span>.
+                <span className="text-white font-bold">{jobTitle || 'this job opening'}</span>.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-slate-400 pt-2 border-t border-slate-800">
+            <div className="flex items-center gap-3 text-xs text-neutral-400 pt-2 border-t border-neutral-800">
               <span className="flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5 text-indigo-400" /> PDF & DOCX Supported
+                <FileText className="h-3.5 w-3.5 text-neutral-300" /> PDF & DOCX Supported
               </span>
               <span>•</span>
               <span>Batch Uploading Enabled</span>
@@ -252,8 +250,8 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
 
       {/* Floating Status Toasts for Error / Success */}
       {errorMessage && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs shadow-lg flex items-start gap-3 animate-in slide-in-from-bottom-3 duration-200">
-          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-xl bg-neutral-900 dark:bg-neutral-800 border border-neutral-700 text-white text-xs shadow-xl flex items-start gap-3 animate-in slide-in-from-bottom-3 duration-200">
+          <AlertCircle className="h-4 w-4 text-white shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-semibold">Upload Notice: </span>
             <span>{errorMessage}</span>
@@ -262,8 +260,8 @@ export function FullScreenDropZone({ jobId, jobTitle, onUploaded }: FullScreenDr
       )}
 
       {successCount !== null && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs shadow-lg flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 font-semibold">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 border border-neutral-700 dark:border-neutral-200 text-xs shadow-xl flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 font-semibold">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>Uploaded {successCount} resume{successCount > 1 ? 's' : ''} to processing queue!</span>
         </div>
       )}

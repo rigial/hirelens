@@ -46,7 +46,7 @@ export function SkillsInput({ skills, onChange }: SkillsInputProps) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-xs font-semibold text-slate-700">
+      <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
         Required & Preferred Skills
       </label>
 
@@ -58,7 +58,7 @@ export function SkillsInput({ skills, onChange }: SkillsInputProps) {
           onChange={(e) => setInputVal(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="e.g. React Native, Rust, PostgreSQL (Press Enter to add)"
-          className="flex-1 h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="flex-1 h-9 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white"
         />
 
         <Button
@@ -69,7 +69,7 @@ export function SkillsInput({ skills, onChange }: SkillsInputProps) {
           title="Toggle requirement level"
           className="text-xs shrink-0"
         >
-          <Star className={`h-3.5 w-3.5 ${importance === 'required' ? 'fill-white' : ''}`} />
+          <Star className={`h-3.5 w-3.5 ${importance === 'required' ? 'fill-current' : ''}`} />
           {importance === 'required' ? 'Required' : 'Nice-to-have'}
         </Button>
 
@@ -80,11 +80,11 @@ export function SkillsInput({ skills, onChange }: SkillsInputProps) {
 
       {/* Skills Chips */}
       {skills.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200/80 rounded-xl min-h-[48px] items-center">
+        <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-xl min-h-[48px] items-center">
           {skills.map((s, idx) => (
             <Badge
               key={idx}
-              variant={s.importance === 'required' ? 'indigo' : 'secondary'}
+              variant={s.importance === 'required' ? 'default' : 'secondary'}
               className="pl-2.5 pr-1.5 py-1 text-xs gap-1.5 cursor-pointer select-none"
               onClick={() => toggleImportance(idx)}
               title="Click to toggle required / nice-to-have"
@@ -99,7 +99,7 @@ export function SkillsInput({ skills, onChange }: SkillsInputProps) {
                   e.stopPropagation();
                   removeSkill(idx);
                 }}
-                className="hover:bg-slate-200/60 rounded-full p-0.5"
+                className="hover:bg-neutral-200/60 dark:hover:bg-neutral-700 rounded-full p-0.5"
               >
                 <X className="h-3 w-3" />
               </button>

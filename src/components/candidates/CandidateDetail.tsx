@@ -26,8 +26,9 @@ import { AISummary } from './AISummary';
 import { SkillMatchBadge } from './SkillMatchBadge';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { ScoreRing } from '../ui/ScoreRing';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
-import { getScoreColor, formatResumeText } from '../../lib/utils';
+import { formatResumeText } from '../../lib/utils';
 import { useCandidateStore } from '../../stores/useCandidateStore';
 import { api } from '../../lib/tauri';
 
@@ -38,7 +39,7 @@ interface CandidateDetailProps {
 }
 
 /**
- * Renders a candidate’s detailed review page for a job, including match analysis, resume text, and review actions.
+ * Renders a candidate’s detailed review page for a job in monochrome style with circular score gauge.
  *
  * @param candidate - The candidate and their analysis, resume, and shortlist information
  * @param jobId - The identifier of the associated job
@@ -61,7 +62,6 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
   }, [candidate.rawText]);
 
   const analysis = candidate.analysis;
-  const scoreColors = analysis ? getScoreColor(analysis.scores.overallScore) : null;
   const isScannedDoc = Boolean(
     candidate.resumeError && (
       candidate.resumeError.toLowerCase().includes('scanned') ||
@@ -134,24 +134,24 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="h-full flex-1 overflow-y-auto overscroll-contain pr-1 space-y-6 max-w-5xl mx-auto">
       {/* Top Navigation */}
       <button
         onClick={() => navigate(`/jobs/${jobId}`)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 cursor-pointer"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Candidate List
       </button>
 
       {/* Scanned PDF Warning Banner */}
       {isScannedDoc && !analysis && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs shadow-xs">
-          <FileWarning className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-neutral-100 dark:bg-neutral-850 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 text-xs shadow-2xs">
+          <FileWarning className="h-5 w-5 text-neutral-800 dark:text-neutral-200 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h4 className="font-bold text-amber-900 text-sm">Scanned Document Warning: No Extractable Text Layer</h4>
-            <p className="leading-relaxed text-amber-800">
+            <h4 className="font-bold text-neutral-950 dark:text-white text-sm">Scanned Document Warning: No Extractable Text Layer</h4>
+            <p className="leading-relaxed text-neutral-700 dark:text-neutral-300">
               This document (<span className="font-medium">{candidate.fileName}</span>) contains no extractable text. It appears to be an image-only scan or flattened PDF.
-              Please apply OCR to the document or upload a text-based PDF or Word document (.docx) to enable automatic skill extraction and match scoring.
+              Please apply OCR or upload a text-based PDF or Word document (.docx) to enable automatic skill extraction and match scoring.
             </p>
           </div>
         </div>
@@ -159,11 +159,11 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
       {/* General Processing Error Banner */}
       {isOtherError && !analysis && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs shadow-xs">
-          <FileWarning className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-neutral-100 dark:bg-neutral-850 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 text-xs shadow-2xs">
+          <AlertCircle className="h-5 w-5 text-neutral-900 dark:text-white shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h4 className="font-bold text-rose-900 text-sm">Document Processing Error</h4>
-            <p className="leading-relaxed text-rose-800">
+            <h4 className="font-bold text-neutral-950 dark:text-white text-sm">Document Processing Error</h4>
+            <p className="leading-relaxed text-neutral-700 dark:text-neutral-300">
               {candidate.resumeError}
             </p>
           </div>
@@ -171,27 +171,24 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
       )}
 
       {/* Main Candidate Card Header */}
-      <Card className="border-slate-200/90 shadow-sm">
+      <Card className="border-neutral-200 dark:border-neutral-800 shadow-2xs">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             {/* Candidate Identity */}
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-5">
               {analysis && (
-                <div
-                  className={`h-16 w-16 rounded-2xl flex flex-col items-center justify-center font-extrabold border shrink-0 ${scoreColors?.bg} ${scoreColors?.border}`}
-                >
-                  <span className={`text-2xl font-black ${scoreColors?.text}`}>
-                    {analysis.scores.overallScore.toFixed(0)}%
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">
-                    Rank #{analysis.rank}
-                  </span>
+                <div className="p-2 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 shrink-0 shadow-2xs">
+                  <ScoreRing
+                    score={analysis.scores.overallScore}
+                    rank={analysis.rank}
+                    size="lg"
+                  />
                 </div>
               )}
 
               <div className="space-y-1.5">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-slate-900">{candidate.name}</h1>
+                  <h1 className="text-2xl font-bold text-neutral-950 dark:text-white">{candidate.name}</h1>
                   <Badge
                     variant={
                       candidate.shortlistStatus === 'shortlisted'
@@ -210,22 +207,22 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                   {candidate.email && (
                     <span className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5 text-slate-400" />
+                      <Mail className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                       {candidate.email}
                     </span>
                   )}
                   {candidate.phone && (
                     <span className="flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 text-slate-400" />
+                      <Phone className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                       {candidate.phone}
                     </span>
                   )}
                   {candidate.location && (
                     <span className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                      <MapPin className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                       {candidate.location}
                     </span>
                   )}
@@ -253,10 +250,10 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
               </Button>
 
               <Button
-                variant={candidate.shortlistStatus === 'rejected' ? 'secondary' : 'destructive'}
+                variant="ghost"
                 size="sm"
                 onClick={() => handleStatusChange(candidate.shortlistStatus === 'rejected' ? 'pending' : 'rejected')}
-                className="gap-1.5"
+                className="gap-1.5 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
               >
                 {candidate.shortlistStatus === 'rejected' ? (
                   <>
@@ -274,7 +271,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 size="sm"
                 onClick={handleDeleteResume}
                 disabled={isDeleting}
-                className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300"
+                className="gap-1.5 text-neutral-700 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white"
                 title="Delete Resume"
               >
                 {isDeleting ? (
@@ -293,13 +290,13 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
       </Card>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-neutral-800">
         <button
           onClick={() => setActiveTab('analysis')}
           className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'analysis'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-neutral-900 dark:border-white text-neutral-950 dark:text-white'
+              : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
           }`}
         >
           AI Match & Score Analysis
@@ -308,8 +305,8 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
           onClick={() => setActiveTab('resume')}
           className={`pb-3 px-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'resume'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-neutral-900 dark:border-white text-neutral-950 dark:text-white'
+              : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
           }`}
         >
           Parsed Resume Text
@@ -339,7 +336,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 {/* Matched Required */}
                 {analysis && analysis.matchedSkills.length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                    <h5 className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide">
                       Matched Skills
                     </h5>
                     <div className="flex flex-wrap gap-1.5">
@@ -352,8 +349,8 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
                 {/* Missing Skills */}
                 {analysis && analysis.missingSkills.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <h5 className="text-xs font-semibold text-rose-700 uppercase tracking-wide">
+                  <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                    <h5 className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">
                       Missing Job Requirements
                     </h5>
                     <div className="flex flex-wrap gap-1.5">
@@ -373,19 +370,19 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xs uppercase flex items-center gap-1.5">
-                      <GraduationCap className="h-4 w-4 text-indigo-600" /> Education
+                      <GraduationCap className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> Education
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
                     {analysis.education.length > 0 ? (
                       analysis.education.map((edu, idx) => (
-                        <div key={idx} className="bg-slate-50 p-2.5 rounded-lg">
-                          <p className="font-semibold text-slate-900">{edu.degree}</p>
-                          <p className="text-slate-500">{edu.institution}</p>
+                        <div key={idx} className="bg-neutral-100/80 dark:bg-neutral-800/80 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                          <p className="font-semibold text-neutral-950 dark:text-white">{edu.degree}</p>
+                          <p className="text-neutral-600 dark:text-neutral-300 mt-0.5">{edu.institution}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-slate-400">Education not explicitly specified</p>
+                      <p className="text-neutral-400 dark:text-neutral-500">Education not explicitly specified</p>
                     )}
                   </CardContent>
                 </Card>
@@ -394,17 +391,17 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xs uppercase flex items-center gap-1.5">
-                      <Briefcase className="h-4 w-4 text-indigo-600" /> Experience Level
+                      <Briefcase className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> Experience Level
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
-                    <div className="bg-slate-50 p-2.5 rounded-lg">
-                      <p className="font-semibold text-slate-900">
+                    <div className="bg-neutral-100/80 dark:bg-neutral-800/80 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                      <p className="font-semibold text-neutral-950 dark:text-white">
                         {analysis.experienceYears !== null && analysis.experienceYears !== undefined
                           ? `${analysis.experienceYears} Years Estimated`
                           : 'Not specified'}
                       </p>
-                      <p className="text-slate-500">Calculated from chronological career entries</p>
+                      <p className="text-neutral-600 dark:text-neutral-300 mt-0.5">Calculated from chronological career entries</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -414,7 +411,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
           {/* Right 1 Col: Score Breakdown & Review Notes */}
           <div className="space-y-6">
-            {analysis && <ScoreBreakdown scores={analysis.scores} />}
+            {analysis && <ScoreBreakdown scores={analysis.scores} rank={analysis.rank} />}
 
             {/* Review Notes */}
             <Card>
@@ -427,7 +424,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                   placeholder="Add private evaluation notes or interview discussion points..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-200 p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 p-2.5 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus-visible:ring-white"
                 />
                 <Button
                   size="sm"
@@ -445,8 +442,8 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
         /* Resume Text Tab */
         <div className="space-y-4">
           {openFileError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800">
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-neutral-100 dark:bg-neutral-850 border border-neutral-300 dark:border-neutral-700 flex items-start gap-2.5 text-xs text-neutral-900 dark:text-neutral-100">
+              <AlertCircle className="h-4 w-4 text-neutral-900 dark:text-white shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-semibold">Unable to open original file: </span>
                 <span>{openFileError}</span>
@@ -454,24 +451,24 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
             </div>
           )}
 
-          <Card className="border-slate-200/90 shadow-sm">
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <Card className="border-neutral-200 dark:border-neutral-800 shadow-2xs">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
               <div className="space-y-1 min-w-0">
-                <CardTitle className="text-sm flex items-center gap-2 text-slate-900 truncate">
-                  <FileText className="h-4 w-4 text-indigo-600 shrink-0" />
+                <CardTitle className="text-sm flex items-center gap-2 text-neutral-900 dark:text-neutral-100 truncate">
+                  <FileText className="h-4 w-4 text-neutral-700 dark:text-neutral-300 shrink-0" />
                   <span className="truncate">{candidate.fileName}</span>
                 </CardTitle>
                 {candidate.filePath && (
-                  <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono truncate">
+                  <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500 font-mono truncate">
                     <span className="truncate">{candidate.filePath}</span>
                     <button
                       type="button"
                       onClick={handleCopyFilePath}
                       title="Copy full file path"
-                      className="p-1 hover:text-slate-700 rounded hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                      className="p-1 hover:text-neutral-900 dark:hover:text-white rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors shrink-0 cursor-pointer"
                     >
                       {isCopiedPath ? (
-                        <Check className="h-3 w-3 text-emerald-600" />
+                        <Check className="h-3 w-3 text-neutral-900 dark:text-white" />
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
@@ -482,14 +479,14 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {/* View Mode Toggle */}
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
                   <button
                     type="button"
                     onClick={() => setResumeViewMode('formatted')}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                       resumeViewMode === 'formatted'
-                        ? 'bg-white text-indigo-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
                     <Eye className="h-3.5 w-3.5" /> Formatted
@@ -499,8 +496,8 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                     onClick={() => setResumeViewMode('raw')}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                       resumeViewMode === 'raw'
-                        ? 'bg-white text-indigo-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
                     <Code className="h-3.5 w-3.5" /> Raw Text
@@ -516,7 +513,7 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
                 >
                   {isCopiedText ? (
                     <>
-                      <Check className="h-3.5 w-3.5 text-emerald-600" /> Copied!
+                      <Check className="h-3.5 w-3.5 text-neutral-900 dark:text-white" /> Copied!
                     </>
                   ) : (
                     <>
@@ -548,15 +545,15 @@ export function CandidateDetail({ candidate, jobId, onUpdateStatus }: CandidateD
 
             <CardContent className="p-6">
               {resumeViewMode === 'formatted' ? (
-                <div className="text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap break-words bg-slate-50/70 p-6 rounded-xl border border-slate-200/80 max-h-[650px] overflow-y-auto select-text space-y-3">
+                <div className="text-sm font-sans text-neutral-900 dark:text-neutral-100 leading-relaxed whitespace-pre-wrap break-words bg-neutral-100/60 dark:bg-neutral-950 p-6 rounded-xl border border-neutral-200 dark:border-neutral-800 max-h-[650px] overflow-y-auto select-text space-y-3">
                   {formattedResumeText ? (
                     formattedResumeText
                   ) : (
-                    <p className="text-xs text-slate-400 italic">No text extracted for this resume.</p>
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 italic">No text extracted for this resume.</p>
                   )}
                 </div>
               ) : (
-                <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap break-words leading-relaxed bg-slate-50 p-6 rounded-xl border border-slate-200 max-h-[650px] overflow-y-auto select-text">
+                <pre className="text-xs font-mono text-neutral-900 dark:text-neutral-100 whitespace-pre-wrap break-words leading-relaxed bg-neutral-100/60 dark:bg-neutral-950 p-6 rounded-xl border border-neutral-200 dark:border-neutral-800 max-h-[650px] overflow-y-auto select-text">
                   {candidate.rawText || 'No text extracted for this resume.'}
                 </pre>
               )}
